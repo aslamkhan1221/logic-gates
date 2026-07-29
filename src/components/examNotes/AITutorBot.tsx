@@ -8,22 +8,22 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const DEFAULT_KEY_B64 = 'QVEuQWI4Uk42TGd6Ykc5Z0VnYnZoQlVsTzFhNWN3RlJPYTRvSmpQSnNTcV83Mlg2bmxaN1E=';
+const B64_KEY = 'QVEuQWI4Uk42TGd6Ykc5Z0VnYnZoQlVsTzFhNWN3RlJPYTRvSmpQSnNTcV83Mlg2bmxaN1E=';
 
-const getApiKey = (): string => {
+function getApiKey(): string {
   const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (envKey && envKey.trim().length > 5) {
+  if (typeof envKey === 'string' && envKey.trim().length > 10) {
     return envKey.trim();
   }
   try {
-    return typeof window !== 'undefined' ? atob(DEFAULT_KEY_B64) : '';
+    return atob(B64_KEY);
   } catch (e) {
     return '';
   }
-};
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REAL GEMINI LLM API CALL WITH FALLBACK TO LOCAL ENGINE
+// REAL GEMINI LLM API CALL WITH MULTI-MODEL FALLBACK
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchGeminiAI(userQuery: string): Promise<string | null> {
@@ -34,8 +34,8 @@ async function fetchGeminiAI(userQuery: string): Promise<string | null> {
     'gemini-flash-latest',
     'gemini-2.0-flash',
     'gemini-2.5-flash',
+    'gemini-1.5-flash',
   ];
-
 
   const systemPrompt = `You are a world-class AI Electronics Professor & Problem Solver for Digital Techniques and Analog Electronics.
 
@@ -78,6 +78,7 @@ Formatting Rules:
       );
 
       if (!response.ok) {
+        console.warn(`Gemini model ${model} status ${response.status}`);
         continue;
       }
 
@@ -95,7 +96,7 @@ Formatting Rules:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPREHENSIVE LOCAL ENGINE — Used as instant fallback if API is offline/rate-limited
+// COMPREHENSIVE LOCAL RESEARCH ENGINE — Universal Smart Knowledge Base
 // ─────────────────────────────────────────────────────────────────────────────
 
 function extractNumber(text: string): number | null {
@@ -341,6 +342,77 @@ ${'─'.repeat(55)}
 💡 BCD +6 RULE: Add 0110₂ (+6) whenever 4-bit sum > 9 OR a carry is generated to skip invalid 4-bit states.`;
   }
 
+  // Counters & Registers
+  if (q.includes('counter') || q.includes('shift register') || q.includes('ring counter') || q.includes('johnson')) {
+    return `📚 DEEP RESEARCH: Counters & Shift Registers
+${'─'.repeat(55)}
+A COUNTER is a sequential logic circuit that counts clock pulses using flip-flops.
+
+📌 COUNTER TYPES:
+1. Asynchronous (Ripple) Counter: Clock drives 1st flip-flop; output Q of each stage acts as clock for next stage.
+   • Simple circuit, but cumulative propagation delay limits maximum clock frequency!
+2. Synchronous Counter: Clock connected PARALLEL to all flip-flops simultaneously.
+   • High speed, no ripple delay!
+
+📌 MOD-N COUNTER RULE:
+   • Number of flip-flops required (n):  2ⁿ ≥ N
+   • Example: Mod-10 (Decade) Counter requires 4 flip-flops (2⁴ = 16 ≥ 10). Resets at 1010₂ using NAND feedback to CLEAR.
+
+📌 SHIFT REGISTER TYPES:
+   • SISO (Serial-In Serial-Out), SIPO, PISO, PIPO
+   • Ring Counter: Output of last flip-flop fed back to 1st flip-flop (N states for N flip-flops).
+   • Johnson (Twisted Ring) Counter: Inverted output Q' of last stage fed back to 1st (2N states for N flip-flops!).
+
+📝 EXAM QUESTION: "Differentiate between Asynchronous and Synchronous counters with neat diagram." [6 Marks]`;
+  }
+
+  // Adders, Subtractors, MUX, DEMUX
+  if (q.includes('adder') || q.includes('subtractor') || q.includes('mux') || q.includes('demux') || q.includes('multiplexer') || q.includes('decoder') || q.includes('encoder')) {
+    return `📚 DEEP RESEARCH: Combinational Logic Circuits (Adders, MUX, Decoders)
+${'─'.repeat(55)}
+📌 HALF ADDER vs FULL ADDER:
+   • Half Adder: Adds 2 bits (A, B).
+     Sum = A ⊕ B,  Carry = A · B
+   • Full Adder: Adds 3 bits (A, B, Cin).
+     Sum = A ⊕ B ⊕ Cin,  Carry = AB + Cin(A ⊕ B)
+
+📌 MULTIPLEXER (MUX - Data Selector):
+   • Connects 2ⁿ input lines to 1 output line using n select lines (S₀, S₁...).
+   • Example: 4:1 MUX has 4 data inputs (I₀..I₃), 2 select lines (S₁, S₀), and output Y:
+     Y = S₁'S₀'I₀ + S₁'S₀I₁ + S₁S₀'I₂ + S₁S₀I₃
+
+📌 DECODER (IC 74138 - 3-to-8 Line Decoder):
+   • Converts n-bit binary input code into 2ⁿ unique active-LOW output lines.
+   • Used for memory address decoding and implementing Boolean functions.
+
+📝 EXAM QUESTION: "Design Full Adder using two Half Adders and an OR gate." [6 Marks]`;
+  }
+
+  // Rectifiers & Diodes & Op-Amps
+  if (q.includes('rectifier') || q.includes('diode') || q.includes('zener') || q.includes('bjt') || q.includes('transistor') || q.includes('555') || q.includes('dac') || q.includes('adc')) {
+    return `📚 DEEP RESEARCH: Analog Electronics & Signal Conditioning
+${'─'.repeat(55)}
+📌 RECTIFIER COMPARISON:
+┌─────────────────────────┬──────────────┬──────────────────┬─────────────────┐
+│ Parameter               │ Half-Wave    │ Full-Wave Center │ Bridge Rectifier│
+├─────────────────────────┼──────────────┼──────────────────┼─────────────────┤
+│ Diodes Used             │      1       │        2         │        4        │
+│ Max Efficiency (η)      │    40.6%     │      81.2%       │      81.2%      │
+│ Ripple Factor (γ)       │     1.21     │       0.48       │       0.48      │
+│ PIV per Diode           │     Vm       │       2Vm        │        Vm       │
+└─────────────────────────┴──────────────┴──────────────────┴─────────────────┘
+
+📌 ZENER DIODE VOLTAGE REGULATOR:
+   • Operates in REVERSE BREAKDOWN region (Vz constant).
+   • Maintains constant load voltage VL = Vz despite variation in input voltage or load current.
+
+📌 IC 555 TIMER MODES:
+   • Astable Multivibrator: Free-running oscillator (no stable state). Frequency f = 1.44 / ((R1 + 2R2) × C).
+   • Monostable Multivibrator: One-shot pulse generator (pulse width T = 1.1 × R × C).
+
+📝 EXAM QUESTION: "Explain Bridge Rectifier with circuit diagram and input/output waveforms." [6 Marks]`;
+  }
+
   // Flip-Flops & Race Around Condition
   if (q.includes('jk') || q.includes('race around') || q.includes('flip flop') || q.includes('flip-flop') || q.includes('latch')) {
     return `📚 DEEP RESEARCH: Flip-Flops & The Race-Around Condition
@@ -470,29 +542,31 @@ Example: Dual of A·(B + C) is A + (B · C).
 📝 EXAM QUESTION: "State and prove De Morgan's theorems using truth tables." [6 Marks]`;
   }
 
-  // Default intelligent structured answer for any unmatched query
-  return `📚 DEEP ELECTRONICS TUTOR RESPONSE: ${query}
+  // Universal fallback for any other general query
+  return `📚 DEEP RESEARCH RESPONSE: ${query}
 ${'─'.repeat(55)}
-Here is a comprehensive breakdown of the query:
+Here is an academic research overview on "${query}":
 
-📌 OVERVIEW:
-This topic is a key component of Digital Techniques & Analog Electronics.
+📌 CORE DEFINITION & CONCEPTS:
+• In Digital Electronics, systems process signals in discrete binary states (0 and 1) representing LOW and HIGH voltage levels.
+• Key Building Blocks: Logic Gates (AND, OR, NOT, NAND, NOR, XOR, XNOR) serve as combinational elements, while Latches and Flip-Flops serve as 1-bit storage elements.
+• Memory & Counting: Registers hold multi-bit binary words, and Counters step through binary sequences on each clock pulse.
+• Analog Interface: Operational Amplifiers (Op-Amps) and ADC/DAC converters bridge analog real-world signals with digital processors.
 
-📌 KEY CONCEPTS & FORMULAS:
-1. Binary Conversions: Divide decimal by 2 (remainders MSB←LSB).
-2. Logic Gates: NAND & NOR are Universal Gates capable of implementing any Boolean function.
-3. Complements: 2's Complement = 1's Complement + 1 (used in digital subtraction).
-4. Logic Families: CMOS offers lowest power dissipation; ECL provides highest speed.
-5. Op-Amps: Virtual Ground concept applies when negative feedback is present (V1 = V2).
+📌 KEY FORMULAS & LAWS TO REMEMBER FOR EXAMS:
+1. Boolean Idempotent Law: A + A = A,  A · A = A
+2. Boolean Absorption Law: A + A·B = A
+3. De Morgan Laws: (A·B)' = A' + B',  (A+B)' = A' · B'
+4. 2's Complement Formula: 2's Comp = 1's Comp + 1
+5. Op-Amp Inverting Gain: Av = - (Rf / Rin)
 
-💡 SPECIFIC EXAMPLES YOU CAN ASK ME TO SOLVE STEP-BY-STEP:
+💡 TRY SPECIFIC QUERIES FOR STEP-BY-STEP SOLUTIONS:
 • "Convert 156 to binary" or "Convert 255 to hex"
-• "Convert 49 to BCD" or "Convert 82 to excess-3"
-• "Subtract 15 from 32 using 2's complement"
-• "Perform BCD addition 8 + 7"
+• "Subtract 14 from 25 using 2's complement"
 • "Explain race around condition in JK flip flop"
-• "Compare TTL, CMOS and ECL"
-• "Derive inverting op-amp voltage gain"`;
+• "Explain logic families TTL CMOS ECL"
+• "Explain counters and shift registers"
+• "Explain bridge rectifier and ripple factor"`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -545,7 +619,7 @@ export const AITutorBot: React.FC = () => {
     // 1. First try real Gemini LLM API
     let aiResponseText = await fetchGeminiAI(text.trim());
 
-    // 2. If Gemini API is offline/rate-limited, use our smart local engine fallback
+    // 2. If Gemini API is offline/rate-limited, use our smart local research engine fallback
     if (!aiResponseText) {
       aiResponseText = generateLocalDeepResponse(text.trim());
     }
