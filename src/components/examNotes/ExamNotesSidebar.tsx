@@ -37,7 +37,7 @@ export const ExamNotesSidebar: React.FC<Props> = ({
   ];
 
   return (
-    <aside style={{
+    <aside className="app-sidebar" style={{
       width: isCollapsed ? '64px' : '230px',
       height: '100%',
       background: 'rgba(15, 23, 42, 0.95)',
@@ -50,7 +50,7 @@ export const ExamNotesSidebar: React.FC<Props> = ({
       fontFamily: 'Inter, system-ui, sans-serif',
     }}>
       {/* Header Brand */}
-      <div style={{
+      <div className="sidebar-header" style={{
         padding: isCollapsed ? '16px 8px' : '16px 16px',
         display: 'flex',
         alignItems: 'center',
@@ -79,6 +79,7 @@ export const ExamNotesSidebar: React.FC<Props> = ({
         )}
 
         <button
+          className="sidebar-collapse-btn"
           onClick={onToggleCollapse}
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           style={{
@@ -98,12 +99,13 @@ export const ExamNotesSidebar: React.FC<Props> = ({
       </div>
 
       {/* Navigation Items */}
-      <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
+      <nav className="sidebar-nav" style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
         {menuItems.map(item => {
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
+              className={`sidebar-item ${isActive ? 'active' : ''}`}
               onClick={() => onSelectTab(item.id)}
               style={{
                 display: 'flex',
@@ -123,13 +125,13 @@ export const ExamNotesSidebar: React.FC<Props> = ({
                 boxShadow: isActive ? '0 4px 14px rgba(2,132,199,0.35)' : 'none',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ color: isActive ? '#fff' : '#94a3b8' }}>{item.icon}</span>
-                {!isCollapsed && <span>{item.label}</span>}
+              <div className="sidebar-item-inner" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="sidebar-icon" style={{ color: isActive ? '#fff' : '#94a3b8' }}>{item.icon}</span>
+                {!isCollapsed && <span className="sidebar-label">{item.label}</span>}
               </div>
 
               {!isCollapsed && item.badge && (
-                <span style={{
+                <span className="sidebar-badge" style={{
                   padding: '2px 6px',
                   borderRadius: '6px',
                   background: 'linear-gradient(135deg, #f59e0b, #d97706)',
@@ -148,10 +150,11 @@ export const ExamNotesSidebar: React.FC<Props> = ({
 
       {/* Footer Info */}
       {!isCollapsed && (
-        <div style={{ padding: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: '#64748b', textAlign: 'center' }}>
+        <div className="sidebar-footer" style={{ padding: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: '#64748b', textAlign: 'center' }}>
           Shri Shivaji Polytechnic · ET3K
         </div>
       )}
     </aside>
   );
+
 };

@@ -943,7 +943,7 @@ export const App: React.FC = () => {
       })()}
 
       {/* Main Workspace Area */}
-      <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
+      <div className="app-main-workspace" style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
         {/* Navigation Sidebar */}
         <ExamNotesSidebar
           activeTab={activeTab}
@@ -953,7 +953,7 @@ export const App: React.FC = () => {
         />
 
         {/* View Switcher Content Container */}
-        <div style={{ flex: 1, display: 'flex', position: 'relative', overflowY: (activeTab === 'exam-notes' || activeTab === 'practice') ? 'auto' : 'hidden' }}>
+        <div className="app-view-container" style={{ flex: 1, display: 'flex', position: 'relative', overflowY: (activeTab === 'exam-notes' || activeTab === 'practice') ? 'auto' : 'hidden' }}>
           {activeTab === 'exam-notes' && (
             <ExamNotesHome
               completedTopicIds={completedTopicIds}
