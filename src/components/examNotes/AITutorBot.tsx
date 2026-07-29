@@ -8,18 +8,34 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEFAULT_KEY_B64 = 'QVEuQWI4Uk42TGd6Ykc5Z0VnYnZoQlVsTzFhNWN3RlJPYTRvSmpQSnNTcV83Mlg2bmxaN1E=';
+
+const getApiKey = (): string => {
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (envKey && envKey.trim().length > 5) {
+    return envKey.trim();
+  }
+  try {
+    return typeof window !== 'undefined' ? atob(DEFAULT_KEY_B64) : '';
+  } catch (e) {
+    return '';
+  }
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REAL GEMINI LLM API CALL WITH FALLBACK TO LOCAL ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchGeminiAI(userQuery: string): Promise<string | null> {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
   const modelsToTry = [
     'gemini-flash-latest',
     'gemini-2.0-flash',
     'gemini-2.5-flash',
   ];
+
 
   const systemPrompt = `You are a world-class AI Electronics Professor & Problem Solver for Digital Techniques and Analog Electronics.
 
@@ -43,7 +59,7 @@ Formatting Rules:
   for (const model of modelsToTry) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
