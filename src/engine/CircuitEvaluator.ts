@@ -89,6 +89,9 @@ export function propagateCircuit(
       // Check internal state
       if (evalRes.newInternalState) {
         node.state.internalState = evalRes.newInternalState;
+        if (evalRes.newInternalState.isRacing !== undefined) {
+          node.state.isRacing = evalRes.newInternalState.isRacing;
+        }
       }
 
       if (nodeOutChanged) {
@@ -112,12 +115,16 @@ export function propagateCircuit(
 }
 
 /**
- * Executes clock ticks for CLOCK nodes.
+ * Executes clock ticks for CLOCK, AC_SUPPLY, FUNCTION_GEN, and SINE_GEN nodes.
+ * Each oscillating source flips its state value on every tick, simulating
+ * waveform generation at the configured frequency (frequency-relative to simulation speed).
  */
 export function tickClockNodes(nodes: CircuitNode[]): { nodes: CircuitNode[]; ticked: boolean } {
   let ticked = false;
+  const OSCILLATING_TYPES: string[] = ['CLOCK', 'AC_SUPPLY', 'FUNCTION_GEN', 'SINE_GEN'];
+
   const nextNodes = nodes.map((node) => {
-    if (node.type === 'CLOCK') {
+    if (OSCILLATING_TYPES.includes(node.type)) {
       const currentVal = node.state.value ?? 0;
       const nextVal: SignalState = currentVal === 1 ? 0 : 1;
       ticked = true;

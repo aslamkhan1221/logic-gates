@@ -62,6 +62,128 @@ export const COMPONENT_METADATA: ComponentMeta[] = [
     defaultInputs: 0,
     iconName: 'Activity',
   },
+  {
+    type: 'LDR_SENSOR',
+    label: 'LDR Light Sensor',
+    category: 'inputs',
+    description: 'Light-Dependent Resistor sensor producing light-proportional signal.',
+    defaultWidth: 75,
+    defaultHeight: 75,
+    defaultInputs: 0,
+    iconName: 'Sun',
+  },
+  {
+    type: 'DC_SUPPLY',
+    label: 'Variable DC Power Supply',
+    category: 'inputs',
+    description: 'Regulated DC Power Supply with variable 0V - 30V voltage output.',
+    defaultWidth: 100,
+    defaultHeight: 80,
+    defaultInputs: 0,
+    iconName: 'Zap',
+  },
+  {
+    type: 'AC_SUPPLY',
+    label: 'Variable AC Power Supply',
+    category: 'inputs',
+    description: 'Variable AC Voltage Source (0V - 24V RMS, 1Hz - 1kHz frequency).',
+    defaultWidth: 100,
+    defaultHeight: 80,
+    defaultInputs: 0,
+    iconName: 'Activity',
+  },
+  {
+    type: 'FUNCTION_GEN',
+    label: 'Function Generator',
+    category: 'inputs',
+    description: 'Multi-waveform laboratory signal generator (Sine, Square, Triangle, Sawtooth).',
+    defaultWidth: 120,
+    defaultHeight: 90,
+    defaultInputs: 0,
+    iconName: 'Sliders',
+  },
+
+  // Discrete Electronics & Passives
+  {
+    type: 'RESISTOR',
+    label: 'Resistor (R)',
+    category: 'discrete',
+    description: 'Passive resistor limiting current and dropping voltage (100Ω - 1MΩ).',
+    defaultWidth: 80,
+    defaultHeight: 50,
+    defaultInputs: 1,
+    iconName: 'Zap',
+  },
+  {
+    type: 'CAPACITOR',
+    label: 'Capacitor (C)',
+    category: 'discrete',
+    description: 'Energy storage & RC filter capacitor (1µF - 1000µF).',
+    defaultWidth: 80,
+    defaultHeight: 50,
+    defaultInputs: 1,
+    iconName: 'Battery',
+  },
+  {
+    type: 'INDUCTOR',
+    label: 'Inductor (L)',
+    category: 'discrete',
+    description: 'Electromagnetic energy coil opposing current changes (1mH - 1H).',
+    defaultWidth: 80,
+    defaultHeight: 50,
+    defaultInputs: 1,
+    iconName: 'Repeat',
+  },
+  {
+    type: 'DIODE',
+    label: 'PN Junction Diode',
+    category: 'discrete',
+    description: 'Standard 1N4148 diode allowing one-way current flow (0.7V drop).',
+    defaultWidth: 80,
+    defaultHeight: 50,
+    defaultInputs: 1,
+    iconName: 'ArrowRight',
+  },
+  {
+    type: 'ZENER_DIODE',
+    label: 'Zener Diode (Vz)',
+    category: 'discrete',
+    description: 'Voltage regulator diode maintaining breakdown voltage Vz (5.1V).',
+    defaultWidth: 80,
+    defaultHeight: 50,
+    defaultInputs: 1,
+    iconName: 'Shield',
+  },
+  {
+    type: 'NPN_BJT',
+    label: 'NPN Transistor',
+    category: 'discrete',
+    description: 'Bipolar junction transistor switch/amplifier (Base, Collector, Emitter).',
+    defaultWidth: 90,
+    defaultHeight: 80,
+    defaultInputs: 2,
+    iconName: 'Cpu',
+  },
+  {
+    type: 'PNP_BJT',
+    label: 'PNP Transistor',
+    category: 'discrete',
+    description: 'Complementary PNP bipolar transistor switch/amplifier.',
+    defaultWidth: 90,
+    defaultHeight: 80,
+    defaultInputs: 2,
+    iconName: 'Cpu',
+  },
+  {
+    type: 'MOSFET_N',
+    label: 'N-Channel MOSFET',
+    category: 'discrete',
+    description: 'High-speed field effect transistor switch (Gate, Drain, Source).',
+    defaultWidth: 90,
+    defaultHeight: 80,
+    defaultInputs: 2,
+    iconName: 'Cpu',
+  },
 
   // Power Amplifiers
   {
@@ -197,7 +319,7 @@ export const COMPONENT_METADATA: ComponentMeta[] = [
     iconName: 'Shield',
   },
 
-  // Outputs
+  // Outputs & Instruments
   {
     type: 'LIGHT_BULB',
     label: 'Light Bulb',
@@ -238,8 +360,18 @@ export const COMPONENT_METADATA: ComponentMeta[] = [
     defaultInputs: 1,
     iconName: 'Volume2',
   },
+  {
+    type: 'OSCILLOSCOPE_PROBE',
+    label: 'Oscilloscope Probe',
+    category: 'outputs',
+    description: 'Attaches to any wire/node to stream real-time voltage waveform to HUD.',
+    defaultWidth: 80,
+    defaultHeight: 70,
+    defaultInputs: 1,
+    iconName: 'Activity',
+  },
 
-  // ICs / Sequential
+  // ICs & Analog
   {
     type: 'SR_LATCH',
     label: 'SR Latch',
@@ -262,23 +394,83 @@ export const COMPONENT_METADATA: ComponentMeta[] = [
   },
   {
     type: 'JK_FLIPFLOP',
-    label: 'JK Flip-Flop',
+    label: 'JK Flip-Flop (Race Sim)',
     category: 'ics',
-    description: 'Universal Flip-Flop with Set, Reset, and Toggle capabilities.',
-    defaultWidth: 110,
+    description: 'Universal Flip-Flop with Set, Reset, Toggle, and Level-Triggered Race-Around simulation.',
+    defaultWidth: 120,
     defaultHeight: 100,
     defaultInputs: 3,
     iconName: 'Cpu',
   },
   {
     type: 'T_FLIPFLOP',
-    label: 'T Flip-Flop',
+    label: 'T Flip-Flop (Race Sim)',
     category: 'ics',
-    description: 'Toggle Flip-Flop. Toggles output on CLK rising edge when T=1.',
+    description: 'Toggle Flip-Flop. Toggles output on CLK rising edge or races when level-triggered.',
     defaultWidth: 110,
     defaultHeight: 90,
     defaultInputs: 2,
     iconName: 'Cpu',
+  },
+  {
+    type: 'OP_AMP',
+    label: '741 / LM358 Op-Amp',
+    category: 'ics',
+    description: 'Operational Amplifier with differential inputs (V+, V-) and saturated output rail.',
+    defaultWidth: 110,
+    defaultHeight: 90,
+    defaultInputs: 2,
+    iconName: 'Sliders',
+  },
+  {
+    type: 'TIMER_555',
+    label: '555 Timer IC',
+    category: 'ics',
+    description: 'Classic IC 555 for Astable pulse oscillator and Monostable timing.',
+    defaultWidth: 110,
+    defaultHeight: 110,
+    defaultInputs: 3,
+    iconName: 'Cpu',
+  },
+  {
+    type: 'TRI_STATE_BUFFER',
+    label: 'Tri-State Buffer',
+    category: 'ics',
+    description: 'High-impedance buffer with active-high Enable (EN) control.',
+    defaultWidth: 90,
+    defaultHeight: 70,
+    defaultInputs: 2,
+    iconName: 'FastForward',
+  },
+  {
+    type: 'COUNTER_4BIT',
+    label: '4-Bit Counter IC (74163)',
+    category: 'ics',
+    description: '4-bit synchronous binary counter IC with CLK, Reset, and Q0-Q3 outputs.',
+    defaultWidth: 120,
+    defaultHeight: 110,
+    defaultInputs: 2,
+    iconName: 'Grid',
+  },
+  {
+    type: 'DECODER_24',
+    label: '2-to-4 Line Decoder (74139)',
+    category: 'ics',
+    description: '2-bit binary input decoder activating 1 of 4 outputs.',
+    defaultWidth: 110,
+    defaultHeight: 110,
+    defaultInputs: 3,
+    iconName: 'Split',
+  },
+  {
+    type: 'VOLTAGE_REGULATOR',
+    label: '7805 Voltage Regulator',
+    category: 'ics',
+    description: 'DC Linear Voltage Regulator maintaining steady 5V output.',
+    defaultWidth: 90,
+    defaultHeight: 70,
+    defaultInputs: 1,
+    iconName: 'Zap',
   },
   {
     type: 'MUX_21',
@@ -321,6 +513,28 @@ export const COMPONENT_METADATA: ComponentMeta[] = [
     iconName: 'Grid',
   },
 
+  // Instruments
+  {
+    type: 'CRO_SCOPE',
+    label: 'CRO Oscilloscope',
+    category: 'outputs',
+    description: 'Cathode Ray Oscilloscope — analog real-time waveform display with V/div and T/div controls.',
+    defaultWidth: 140,
+    defaultHeight: 110,
+    defaultInputs: 2,
+    iconName: 'Monitor',
+  },
+  {
+    type: 'DSO_SCOPE',
+    label: 'DSO — Digital Storage Oscilloscope',
+    category: 'outputs',
+    description: 'Digital Storage Oscilloscope with FFT analysis, trigger control, and multi-channel waveform capture.',
+    defaultWidth: 160,
+    defaultHeight: 120,
+    defaultInputs: 2,
+    iconName: 'Monitor',
+  },
+
   // Annotation
   {
     type: 'TEXT_NOTE',
@@ -349,7 +563,52 @@ export function createDefaultPortsForNode(type: NodeType, numInputsOverride?: nu
     case 'CONST_LOW':
     case 'CLOCK':
     case 'SINE_GEN':
+    case 'LDR_SENSOR':
       outputs.push({ id: 'out_0', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      break;
+
+    case 'DC_SUPPLY':
+      outputs.push({ id: 'out_pos', name: 'V+', type: 'output', value: 1, relativeX: 100, relativeY: 35 });
+      outputs.push({ id: 'out_neg', name: 'GND', type: 'output', value: 0, relativeX: 100, relativeY: 65 });
+      break;
+
+    case 'AC_SUPPLY':
+      outputs.push({ id: 'out_live', name: 'L', type: 'output', value: 1, relativeX: 100, relativeY: 35 });
+      outputs.push({ id: 'out_neutral', name: 'N', type: 'output', value: 0, relativeX: 100, relativeY: 65 });
+      break;
+
+    case 'FUNCTION_GEN':
+      outputs.push({ id: 'out_sig', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 40 });
+      outputs.push({ id: 'out_sync', name: 'SYNC', type: 'output', value: 0, relativeX: 100, relativeY: 65 });
+      break;
+
+    case 'CRO_SCOPE':
+      inputs.push({ id: 'in_ch1', name: 'CH1', type: 'input', value: 0, relativeX: 0, relativeY: 35 });
+      inputs.push({ id: 'in_ch2', name: 'CH2', type: 'input', value: 0, relativeX: 0, relativeY: 65 });
+      break;
+
+    case 'DSO_SCOPE':
+      inputs.push({ id: 'in_ch1', name: 'CH1', type: 'input', value: 0, relativeX: 0, relativeY: 30 });
+      inputs.push({ id: 'in_ch2', name: 'CH2', type: 'input', value: 0, relativeX: 0, relativeY: 55 });
+      inputs.push({ id: 'in_trig', name: 'TRIG', type: 'input', value: 0, relativeX: 0, relativeY: 80 });
+      break;
+
+    case 'RESISTOR':
+    case 'CAPACITOR':
+    case 'INDUCTOR':
+    case 'DIODE':
+    case 'ZENER_DIODE':
+    case 'VOLTAGE_REGULATOR':
+      inputs.push({ id: 'in_0', name: 'IN', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
+      outputs.push({ id: 'out_0', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      break;
+
+    case 'NPN_BJT':
+    case 'PNP_BJT':
+    case 'MOSFET_N':
+      inputs.push({ id: 'in_b', name: 'B/G', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
+      inputs.push({ id: 'in_c', name: 'C/D', type: 'input', value: 0, relativeX: 50, relativeY: 0 });
+      outputs.push({ id: 'out_e', name: 'E/S', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
       break;
 
     case 'AMP_CLASS_A':
@@ -359,6 +618,45 @@ export function createDefaultPortsForNode(type: NodeType, numInputsOverride?: nu
     case 'AMP_CLASS_D':
       inputs.push({ id: 'in_sig', name: 'VIN', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
       outputs.push({ id: 'out_sig', name: 'VOUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      break;
+
+    case 'OP_AMP':
+      inputs.push({ id: 'in_pos', name: 'V+', type: 'input', value: 0, relativeX: 0, relativeY: 30 });
+      inputs.push({ id: 'in_neg', name: 'V-', type: 'input', value: 0, relativeX: 0, relativeY: 70 });
+      outputs.push({ id: 'out_0', name: 'VOUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      break;
+
+    case 'TIMER_555':
+      inputs.push({ id: 'in_trig', name: 'TRIG', type: 'input', value: 0, relativeX: 0, relativeY: 30 });
+      inputs.push({ id: 'in_thresh', name: 'THRH', type: 'input', value: 0, relativeX: 0, relativeY: 70 });
+      inputs.push({ id: 'in_rst', name: 'RST', type: 'input', value: 1, relativeX: 50, relativeY: 0 });
+      outputs.push({ id: 'out_0', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      outputs.push({ id: 'out_dis', name: 'DIS', type: 'output', value: 0, relativeX: 50, relativeY: 100 });
+      break;
+
+    case 'TRI_STATE_BUFFER':
+      inputs.push({ id: 'in_0', name: 'IN', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
+      inputs.push({ id: 'in_en', name: 'EN', type: 'input', value: 1, relativeX: 50, relativeY: 100 });
+      outputs.push({ id: 'out_0', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
+      break;
+
+    case 'COUNTER_4BIT':
+      inputs.push({ id: 'in_clk', name: 'CLK', type: 'input', value: 0, relativeX: 0, relativeY: 30 });
+      inputs.push({ id: 'in_rst', name: 'RST', type: 'input', value: 0, relativeX: 0, relativeY: 70 });
+      outputs.push({ id: 'out_q0', name: 'Q0', type: 'output', value: 0, relativeX: 100, relativeY: 20 });
+      outputs.push({ id: 'out_q1', name: 'Q1', type: 'output', value: 0, relativeX: 100, relativeY: 40 });
+      outputs.push({ id: 'out_q2', name: 'Q2', type: 'output', value: 0, relativeX: 100, relativeY: 60 });
+      outputs.push({ id: 'out_q3', name: 'Q3', type: 'output', value: 0, relativeX: 100, relativeY: 80 });
+      break;
+
+    case 'DECODER_24':
+      inputs.push({ id: 'in_a0', name: 'A0', type: 'input', value: 0, relativeX: 0, relativeY: 25 });
+      inputs.push({ id: 'in_a1', name: 'A1', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
+      inputs.push({ id: 'in_en', name: 'EN', type: 'input', value: 1, relativeX: 0, relativeY: 75 });
+      outputs.push({ id: 'out_y0', name: 'Y0', type: 'output', value: 1, relativeX: 100, relativeY: 20 });
+      outputs.push({ id: 'out_y1', name: 'Y1', type: 'output', value: 0, relativeX: 100, relativeY: 40 });
+      outputs.push({ id: 'out_y2', name: 'Y2', type: 'output', value: 0, relativeX: 100, relativeY: 60 });
+      outputs.push({ id: 'out_y3', name: 'Y3', type: 'output', value: 0, relativeX: 100, relativeY: 80 });
       break;
 
     case 'BUFFER':
@@ -390,7 +688,9 @@ export function createDefaultPortsForNode(type: NodeType, numInputsOverride?: nu
     case 'LIGHT_BULB':
     case 'LED_PROBE':
     case 'BUZZER':
+    case 'OSCILLOSCOPE_PROBE':
       inputs.push({ id: 'in_0', name: 'IN', type: 'input', value: 0, relativeX: 0, relativeY: 50 });
+      outputs.push({ id: 'out_0', name: 'OUT', type: 'output', value: 0, relativeX: 100, relativeY: 50 });
       break;
 
     case 'HEX_DISPLAY':
@@ -493,17 +793,171 @@ export function evaluateNodeLogic(node: CircuitNode): {
     case 'BUTTON':
     case 'CLOCK':
     case 'SINE_GEN':
+    case 'LDR_SENSOR':
       outputs['out_0'] = node.state.value === 1 ? 1 : 0;
       break;
+
+    case 'DC_SUPPLY': {
+      // Variable DC supply: outputs HIGH when voltage > 0
+      const vdc = node.state.voltageDc ?? 5;
+      const isOn = vdc > 0;
+      outputs['out_pos'] = isOn ? 1 : 0;
+      outputs['out_neg'] = 0; // GND always 0
+      nodeStateVal = isOn ? 1 : 0;
+      break;
+    }
+
+    case 'AC_SUPPLY': {
+      // Variable AC supply: live wire toggles with state, neutral is always LOW
+      const vrms = node.state.voltageAcRms ?? 12;
+      const isOn = vrms > 0;
+      outputs['out_live'] = isOn ? node.state.value ?? 1 : 0;
+      outputs['out_neutral'] = 0;
+      nodeStateVal = isOn ? 1 : 0;
+      break;
+    }
+
+    case 'FUNCTION_GEN': {
+      // Function generator outputs based on its internal clock state (managed in App like CLOCK)
+      const fgOn = (node.state.amplitude ?? 5) > 0;
+      outputs['out_sig'] = fgOn ? node.state.value ?? 0 : 0;
+      outputs['out_sync'] = fgOn ? (node.state.value === 1 ? 0 : 1) : 0; // inverted sync
+      nodeStateVal = outputs['out_sig'];
+      break;
+    }
+
+    case 'CRO_SCOPE': {
+      // CRO is a measurement instrument — records ch1 and ch2, no output
+      const ch1 = getIn('in_ch1') === 1 ? 1 : 0;
+      const ch2 = getIn('in_ch2') === 1 ? 1 : 0;
+      nextInternal.ch1 = ch1;
+      nextInternal.ch2 = ch2;
+      nodeStateVal = ch1; // reflect ch1 as primary
+      break;
+    }
+
+    case 'DSO_SCOPE': {
+      // DSO is a measurement instrument with trigger — records channels, no output
+      const ch1 = getIn('in_ch1') === 1 ? 1 : 0;
+      const ch2 = getIn('in_ch2') === 1 ? 1 : 0;
+      const trig = getIn('in_trig') === 1 ? 1 : 0;
+      const trigLevel = node.state.triggerLevel ?? 0.5;
+      const triggered = trig === 1 || ch1 >= (trigLevel > 0 ? 1 : 0);
+      nextInternal.ch1 = ch1;
+      nextInternal.ch2 = ch2;
+      nextInternal.triggered = triggered;
+      nodeStateVal = ch1;
+      break;
+    }
+
+    case 'RESISTOR':
+    case 'CAPACITOR':
+    case 'INDUCTOR':
+    case 'VOLTAGE_REGULATOR':
+      outputs['out_0'] = getIn('in_0') === 1 ? 1 : 0;
+      break;
+
+    case 'DIODE': {
+      const vin = getIn('in_0') === 1 ? 1 : 0;
+      outputs['out_0'] = vin; // Forward biased conducts signal
+      break;
+    }
+
+    case 'ZENER_DIODE': {
+      const vin = getIn('in_0') === 1 ? 1 : 0;
+      outputs['out_0'] = vin;
+      break;
+    }
+
+    case 'NPN_BJT':
+    case 'MOSFET_N': {
+      const baseVal = getIn('in_b') === 1 ? 1 : 0;
+      const colVal = getIn('in_c') === 1 ? 1 : 0;
+      // Conducts when Base/Gate is HIGH
+      outputs['out_e'] = baseVal === 1 ? colVal : 0;
+      break;
+    }
+
+    case 'PNP_BJT': {
+      const baseVal = getIn('in_b') === 1 ? 1 : 0;
+      const colVal = getIn('in_c') === 1 ? 1 : 0;
+      // Conducts when Base is LOW
+      outputs['out_e'] = baseVal === 0 ? colVal : 0;
+      break;
+    }
 
     case 'AMP_CLASS_A':
     case 'AMP_CLASS_B':
     case 'AMP_CLASS_AB':
     case 'AMP_CLASS_C':
     case 'AMP_CLASS_D':
-      // Passes high/low signal or tracks analog wave
       outputs['out_sig'] = getIn('in_sig') === 1 ? 1 : 0;
       break;
+
+    case 'OP_AMP': {
+      const vpos = getIn('in_pos') === 1 ? 1 : 0;
+      const vneg = getIn('in_neg') === 1 ? 1 : 0;
+      // Differential output comparator: V+ > V- => 1 else 0
+      outputs['out_0'] = vpos > vneg ? 1 : vpos < vneg ? 0 : vpos;
+      break;
+    }
+
+    case 'TIMER_555': {
+      const trig = getIn('in_trig') === 1 ? 1 : 0;
+      const rst = getIn('in_rst') === 1 ? 1 : 0;
+      let outState = currentInternal.outState ?? 0;
+
+      if (rst === 0) {
+        outState = 0;
+      } else if (trig === 0) {
+        outState = 1; // Trigger pulsed LOW turns 555 output HIGH
+      }
+      nextInternal.outState = outState;
+      outputs['out_0'] = outState;
+      outputs['out_dis'] = outState === 1 ? 0 : 1;
+      break;
+    }
+
+    case 'TRI_STATE_BUFFER': {
+      const inVal = getIn('in_0');
+      const enVal = getIn('in_en') === 1 ? 1 : 0;
+      outputs['out_0'] = enVal === 1 ? inVal : null; // High-Z when disabled
+      break;
+    }
+
+    case 'COUNTER_4BIT': {
+      const clk = getIn('in_clk') === 1 ? 1 : 0;
+      const rst = getIn('in_rst') === 1 ? 1 : 0;
+      const prevClk = currentInternal.prevClk ?? 0;
+      let count = currentInternal.count ?? 0;
+
+      if (rst === 1) {
+        count = 0;
+      } else if (prevClk === 0 && clk === 1) {
+        count = (count + 1) % 16;
+      }
+
+      nextInternal.prevClk = clk;
+      nextInternal.count = count;
+      outputs['out_q0'] = (count & 1) ? 1 : 0;
+      outputs['out_q1'] = (count & 2) ? 1 : 0;
+      outputs['out_q2'] = (count & 4) ? 1 : 0;
+      outputs['out_q3'] = (count & 8) ? 1 : 0;
+      break;
+    }
+
+    case 'DECODER_24': {
+      const a0 = getIn('in_a0') === 1 ? 1 : 0;
+      const a1 = getIn('in_a1') === 1 ? 1 : 0;
+      const en = getIn('in_en') === 1 ? 1 : 0;
+      const sel = a0 + a1 * 2;
+
+      outputs['out_y0'] = en && sel === 0 ? 1 : 0;
+      outputs['out_y1'] = en && sel === 1 ? 1 : 0;
+      outputs['out_y2'] = en && sel === 2 ? 1 : 0;
+      outputs['out_y3'] = en && sel === 3 ? 1 : 0;
+      break;
+    }
 
     case 'CONST_HIGH':
       outputs['out_0'] = 1;
@@ -560,7 +1014,9 @@ export function evaluateNodeLogic(node: CircuitNode): {
     case 'LIGHT_BULB':
     case 'LED_PROBE':
     case 'BUZZER':
+    case 'OSCILLOSCOPE_PROBE':
       nodeStateVal = getIn('in_0') === 1 ? 1 : 0;
+      outputs['out_0'] = nodeStateVal;
       break;
 
     case 'HEX_DISPLAY': {
@@ -583,7 +1039,11 @@ export function evaluateNodeLogic(node: CircuitNode): {
       } else if (s === 0 && r === 1) {
         q = 0;
       } else if (s === 1 && r === 1) {
-        q = 0;
+        // Race condition / Undefined state in SR Latch!
+        q = currentInternal.Q === 1 ? 0 : 1;
+        nextInternal.isRacing = true;
+      } else {
+        nextInternal.isRacing = false;
       }
 
       nextInternal.Q = q;
@@ -615,11 +1075,28 @@ export function evaluateNodeLogic(node: CircuitNode): {
       const clk = getIn('in_clk') === 1 ? 1 : 0;
       const prevClk = currentInternal.prevClk ?? 0;
       let q = currentInternal.Q ?? 0;
+      const triggerMode = node.state.triggerMode ?? 'level';
 
-      if (prevClk === 0 && clk === 1) {
-        if (j === 1 && k === 0) q = 1;
-        else if (j === 0 && k === 1) q = 0;
-        else if (j === 1 && k === 1) q = q === 1 ? 0 : 1;
+      if (triggerMode === 'level') {
+        // Level-Triggered: When CLK=1 and J=1 & K=1, pulse duration tp > propagation delay causes RACE-AROUND CONDITION (oscillates continuously!)
+        if (clk === 1 && j === 1 && k === 1) {
+          q = q === 1 ? 0 : 1; // Toggles rapidly on every step pass!
+          nextInternal.isRacing = true;
+        } else {
+          nextInternal.isRacing = false;
+          if (prevClk === 0 && clk === 1) {
+            if (j === 1 && k === 0) q = 1;
+            else if (j === 0 && k === 1) q = 0;
+          }
+        }
+      } else {
+        // Master-Slave / Edge-Triggered (Race-Free)
+        nextInternal.isRacing = false;
+        if (prevClk === 0 && clk === 1) {
+          if (j === 1 && k === 0) q = 1;
+          else if (j === 0 && k === 1) q = 0;
+          else if (j === 1 && k === 1) q = q === 1 ? 0 : 1;
+        }
       }
 
       nextInternal.prevClk = clk;
@@ -634,9 +1111,23 @@ export function evaluateNodeLogic(node: CircuitNode): {
       const clk = getIn('in_clk') === 1 ? 1 : 0;
       const prevClk = currentInternal.prevClk ?? 0;
       let q = currentInternal.Q ?? 0;
+      const triggerMode = node.state.triggerMode ?? 'level';
 
-      if (prevClk === 0 && clk === 1 && t === 1) {
-        q = q === 1 ? 0 : 1;
+      if (triggerMode === 'level') {
+        if (clk === 1 && t === 1) {
+          q = q === 1 ? 0 : 1; // Race-around condition in level-triggered T flip flop!
+          nextInternal.isRacing = true;
+        } else {
+          nextInternal.isRacing = false;
+          if (prevClk === 0 && clk === 1 && t === 1) {
+            q = q === 1 ? 0 : 1;
+          }
+        }
+      } else {
+        nextInternal.isRacing = false;
+        if (prevClk === 0 && clk === 1 && t === 1) {
+          q = q === 1 ? 0 : 1;
+        }
       }
 
       nextInternal.prevClk = clk;
@@ -683,7 +1174,11 @@ export function evaluateNodeLogic(node: CircuitNode): {
 
     case 'TEXT_NOTE':
       break;
+
+    default:
+      break;
   }
 
   return { outputs, newInternalState: nextInternal, nodeStateValue: nodeStateVal };
 }
+

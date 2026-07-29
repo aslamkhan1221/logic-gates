@@ -31,6 +31,11 @@ import {
   ChevronRight,
   Menu,
   X,
+  Sun,
+  Battery,
+  Repeat,
+  ArrowRight,
+  Monitor,
 } from 'lucide-react';
 
 interface PaletteProps {
@@ -62,14 +67,20 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   PlusSquare: <PlusSquare size={18} />,
   Grid: <Grid size={18} />,
   FileText: <FileText size={18} />,
+  Sun: <Sun size={18} />,
+  Battery: <Battery size={18} />,
+  Repeat: <Repeat size={18} />,
+  ArrowRight: <ArrowRight size={18} />,
+  Monitor: <Monitor size={18} />,
 };
 
 const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'inputs', label: 'Input Controls' },
+  { id: 'inputs', label: 'Input Controls & Sensors' },
+  { id: 'discrete', label: 'Discrete Electronics & Passives' },
   { id: 'amplifiers', label: 'Power Amplifiers (Class A-D)' },
   { id: 'gates', label: 'Logic Gates' },
-  { id: 'outputs', label: 'Outputs & Displays' },
-  { id: 'ics', label: 'ICs & Memory Latches' },
+  { id: 'ics', label: 'ICs & Analog Blocks' },
+  { id: 'outputs', label: 'Outputs & Instruments' },
   { id: 'annotations', label: 'Annotations' },
 ];
 
@@ -77,6 +88,7 @@ export const Palette: React.FC<PaletteProps> = ({ onAddNode }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     inputs: true,
+    discrete: true,
     amplifiers: true,
     gates: true,
     outputs: true,

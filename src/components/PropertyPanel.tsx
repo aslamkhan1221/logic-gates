@@ -13,6 +13,7 @@ interface PropertyPanelProps {
   onDuplicateNode: (nodeId: string) => void;
   onOpenTruthTableModal: () => void;
   onOpenWaveformModal: () => void;
+  onOpenOscilloscopeModal?: (nodeId: string) => void;
   onClose: () => void;
 }
 
@@ -25,6 +26,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   onDuplicateNode,
   onOpenTruthTableModal,
   onOpenWaveformModal,
+  onOpenOscilloscopeModal,
   onClose,
 }) => {
   if (!selectedNode && !selectedWire) return null;
@@ -206,6 +208,333 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 <option value={3}>3 Inputs</option>
                 <option value={4}>4 Inputs</option>
               </select>
+            </div>
+          )}
+
+          {/* FLIP-FLOP RACE-AROUND CONDITION CONTROLS */}
+          {['JK_FLIPFLOP', 'T_FLIPFLOP'].includes(selectedNode.type) && (
+            <div style={{ background: 'rgba(30, 41, 59, 0.5)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                ⚡ Trigger Mode & Race Condition
+              </label>
+
+              <select
+                value={selectedNode.state.triggerMode || 'level'}
+                onChange={(e) =>
+                  onUpdateNode({
+                    ...selectedNode,
+                    state: { ...selectedNode.state, triggerMode: e.target.value as 'level' | 'master_slave' },
+                  })
+                }
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                }}
+              >
+                <option value="level">Level-Triggered (Enables Race-Around)</option>
+                <option value="master_slave">Master-Slave / Edge (Race-Free)</option>
+              </select>
+
+              {(selectedNode.state.triggerMode || 'level') === 'level' ? (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '1.3' }}>
+                  ⚠️ <strong style={{ color: '#f59e0b' }}>Level-Triggered:</strong> When J=1, K=1, CLK=1 and pulse width $t_p &gt; \Delta t$, output Q continuously toggles causing <strong style={{ color: '#ef4444' }}>Race-Around Condition</strong>.
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)', lineHeight: '1.3' }}>
+                  ✅ <strong style={{ color: 'var(--accent-emerald)' }}>Master-Slave:</strong> Toggles once per clock edge, eliminating race-around condition.
+                </div>
+              )}
+
+              {selectedNode.state.isRacing && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: '6px', padding: '6px 8px', color: '#ef4444', fontSize: '0.74rem', fontWeight: 700 }}>
+                  ⚡ RACE AROUND ACTIVE! Output oscillating at high frequency.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DISCRETE & PASSIVE ELECTRONICS CONTROLS */}
+          {selectedNode.type === 'RESISTOR' && (
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                Resistance (Ohms Ω)
+              </label>
+              <input
+                type="number"
+                min={10}
+                max={1000000}
+                step={100}
+                value={selectedNode.state.resistance ?? 1000}
+                onChange={(e) =>
+                  onUpdateNode({
+                    ...selectedNode,
+                    state: { ...selectedNode.state, resistance: Number(e.target.value) },
+                  })
+                }
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {selectedNode.type === 'CAPACITOR' && (
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                Capacitance (µF)
+              </label>
+              <input
+                type="number"
+                min={0.1}
+                max={10000}
+                step={1}
+                value={selectedNode.state.capacitance ?? 10}
+                onChange={(e) =>
+                  onUpdateNode({
+                    ...selectedNode,
+                    state: { ...selectedNode.state, capacitance: Number(e.target.value) },
+                  })
+                }
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* DC POWER SUPPLY CONTROLS */}
+          {selectedNode.type === 'DC_SUPPLY' && (
+            <div style={{ background: 'rgba(30,41,59,0.5)', padding: '10px', borderRadius: '8px', border: '1px solid #f59e0b55', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f59e0b' }}>⚡ DC Power Supply (Variable)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                <span>Output Voltage (V):</span>
+                <span style={{ color: '#facc15', fontWeight: 700 }}>{selectedNode.state.voltageDc ?? 5} V</span>
+              </div>
+              <input
+                type="range" min={0} max={30} step={0.5}
+                value={selectedNode.state.voltageDc ?? 5}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, voltageDc: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                <span>0 V</span><span>15 V</span><span>30 V</span>
+              </div>
+            </div>
+          )}
+
+          {/* AC POWER SUPPLY CONTROLS */}
+          {selectedNode.type === 'AC_SUPPLY' && (
+            <div style={{ background: 'rgba(30,41,59,0.5)', padding: '10px', borderRadius: '8px', border: '1px solid #f43f5e55', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f43f5e' }}>⚡ AC Power Supply (Variable)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                <span>RMS Voltage:</span>
+                <span style={{ color: '#f87171', fontWeight: 700 }}>{selectedNode.state.voltageAcRms ?? 12} V RMS</span>
+              </div>
+              <input
+                type="range" min={0} max={24} step={0.5}
+                value={selectedNode.state.voltageAcRms ?? 12}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, voltageAcRms: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#f43f5e', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px', marginTop: '4px' }}>
+                <span>Frequency:</span>
+                <span style={{ color: '#f87171', fontWeight: 700 }}>{selectedNode.state.frequency ?? 50} Hz</span>
+              </div>
+              <input
+                type="range" min={1} max={1000} step={1}
+                value={selectedNode.state.frequency ?? 50}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, frequency: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#f43f5e', cursor: 'pointer' }}
+              />
+            </div>
+          )}
+
+          {/* FUNCTION GENERATOR CONTROLS */}
+          {selectedNode.type === 'FUNCTION_GEN' && (
+            <div style={{ background: 'rgba(30,41,59,0.5)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>〰 Function Generator</label>
+              <div>
+                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Waveform Type</label>
+                <select
+                  value={selectedNode.state.waveType ?? 'sine'}
+                  onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, waveType: e.target.value as any } })}
+                  style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                >
+                  <option value="sine">Sine Wave</option>
+                  <option value="square">Square Wave</option>
+                  <option value="triangle">Triangle Wave</option>
+                  <option value="sawtooth">Sawtooth Wave</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Frequency:</span>
+                <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{selectedNode.state.frequency ?? 1000} Hz</span>
+              </div>
+              <input
+                type="range" min={1} max={100000} step={100}
+                value={selectedNode.state.frequency ?? 1000}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, frequency: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Amplitude (Vpp):</span>
+                <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{selectedNode.state.amplitude ?? 5} Vpp</span>
+              </div>
+              <input
+                type="range" min={0.1} max={20} step={0.1}
+                value={selectedNode.state.amplitude ?? 5}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, amplitude: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>DC Offset (V):</span>
+                <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{selectedNode.state.offsetV ?? 0} V</span>
+              </div>
+              <input
+                type="range" min={-10} max={10} step={0.1}
+                value={selectedNode.state.offsetV ?? 0}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, offsetV: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+              />
+            </div>
+          )}
+
+          {/* CRO OSCILLOSCOPE CONTROLS */}
+          {selectedNode.type === 'CRO_SCOPE' && (
+            <div style={{ background: 'rgba(30,41,59,0.5)', padding: '10px', borderRadius: '8px', border: '1px solid #38bdf855', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#38bdf8' }}>📺 CRO — Cathode Ray Oscilloscope</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>V/div:</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedNode.state.voltsPerDiv ?? 1} V/div</span>
+              </div>
+              <input
+                type="range" min={0.1} max={10} step={0.1}
+                value={selectedNode.state.voltsPerDiv ?? 1}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, voltsPerDiv: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Time/div (ms):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedNode.state.timePerDiv ?? 1} ms/div</span>
+              </div>
+              <input
+                type="range" min={0.1} max={100} step={0.1}
+                value={selectedNode.state.timePerDiv ?? 1}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, timePerDiv: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+              />
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                CH1: <strong style={{ color: '#38bdf8' }}>{selectedNode.state.internalState?.ch1 === 1 ? '5.0V (HIGH)' : '0.0V (LOW)'}</strong>{'  '}
+                CH2: <strong style={{ color: '#10b981' }}>{selectedNode.state.internalState?.ch2 === 1 ? '5.0V (HIGH)' : '0.0V (LOW)'}</strong>
+              </div>
+              <button
+                onClick={() => onOpenOscilloscopeModal?.(selectedNode.id)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  marginTop: '6px',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)',
+                }}
+              >
+                📺 Open Full Front Panel Instrument
+              </button>
+            </div>
+          )}
+
+          {/* DSO OSCILLOSCOPE CONTROLS */}
+          {selectedNode.type === 'DSO_SCOPE' && (
+            <div style={{ background: 'rgba(30,41,59,0.5)', padding: '10px', borderRadius: '8px', border: '1px solid #a78bfa55', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#a78bfa' }}>📡 DSO — Digital Storage Oscilloscope</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>V/div:</span>
+                <span style={{ color: '#a78bfa', fontWeight: 700 }}>{selectedNode.state.voltsPerDiv ?? 1} V/div</span>
+              </div>
+              <input
+                type="range" min={0.1} max={10} step={0.1}
+                value={selectedNode.state.voltsPerDiv ?? 1}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, voltsPerDiv: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#a78bfa', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Time/div (ms):</span>
+                <span style={{ color: '#a78bfa', fontWeight: 700 }}>{selectedNode.state.timePerDiv ?? 1} ms/div</span>
+              </div>
+              <input
+                type="range" min={0.1} max={100} step={0.1}
+                value={selectedNode.state.timePerDiv ?? 1}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, timePerDiv: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#a78bfa', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Trigger Level (V):</span>
+                <span style={{ color: '#a78bfa', fontWeight: 700 }}>{selectedNode.state.triggerLevel ?? 2.5} V</span>
+              </div>
+              <input
+                type="range" min={0} max={5} step={0.1}
+                value={selectedNode.state.triggerLevel ?? 2.5}
+                onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, triggerLevel: Number(e.target.value) } })}
+                style={{ width: '100%', accentColor: '#a78bfa', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>FFT Analysis Mode</label>
+                <input
+                  type="checkbox"
+                  checked={!!selectedNode.state.fftEnabled}
+                  onChange={(e) => onUpdateNode({ ...selectedNode, state: { ...selectedNode.state, fftEnabled: e.target.checked } })}
+                  style={{ accentColor: '#a78bfa', width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                CH1: <strong style={{ color: '#38bdf8' }}>{selectedNode.state.internalState?.ch1 === 1 ? '5.0V' : '0.0V'}</strong>{'  '}
+                CH2: <strong style={{ color: '#f59e0b' }}>{selectedNode.state.internalState?.ch2 === 1 ? '5.0V' : '0.0V'}</strong>{'  '}
+                Trigger: <strong style={{ color: selectedNode.state.internalState?.triggered ? '#10b981' : '#64748b' }}>{selectedNode.state.internalState?.triggered ? 'ARMED ✓' : 'WAITING'}</strong>
+              </div>
+              <button
+                onClick={() => onOpenOscilloscopeModal?.(selectedNode.id)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  marginTop: '6px',
+                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)',
+                }}
+              >
+                📡 Open Full Front Panel Instrument
+              </button>
             </div>
           )}
 

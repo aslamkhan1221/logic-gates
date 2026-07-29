@@ -1,13 +1,17 @@
 export type SignalState = 0 | 1 | null;
 
 export type NodeType =
-  // Inputs
+  // Inputs & Power Supplies
   | 'SWITCH'
   | 'BUTTON'
   | 'CONST_HIGH'
   | 'CONST_LOW'
   | 'CLOCK'
   | 'SINE_GEN'
+  | 'LDR_SENSOR'
+  | 'DC_SUPPLY'
+  | 'AC_SUPPLY'
+  | 'FUNCTION_GEN'
   // Logic Gates
   | 'BUFFER'
   | 'NOT'
@@ -17,12 +21,16 @@ export type NodeType =
   | 'NOR'
   | 'XOR'
   | 'XNOR'
-  // Outputs
-  | 'LIGHT_BULB'
-  | 'LED_PROBE'
-  | 'HEX_DISPLAY'
-  | 'BUZZER'
-  // ICs / Sequential
+  // Discrete Electronics & Passives
+  | 'RESISTOR'
+  | 'CAPACITOR'
+  | 'INDUCTOR'
+  | 'DIODE'
+  | 'ZENER_DIODE'
+  | 'NPN_BJT'
+  | 'PNP_BJT'
+  | 'MOSFET_N'
+  // Integrated Circuits & Analog
   | 'SR_LATCH'
   | 'D_FLIPFLOP'
   | 'JK_FLIPFLOP'
@@ -31,16 +39,30 @@ export type NodeType =
   | 'DEMUX_12'
   | 'HALF_ADDER'
   | 'FULL_ADDER'
+  | 'OP_AMP'
+  | 'TIMER_555'
+  | 'TRI_STATE_BUFFER'
+  | 'COUNTER_4BIT'
+  | 'DECODER_24'
+  | 'VOLTAGE_REGULATOR'
   // Power Amplifiers
   | 'AMP_CLASS_A'
   | 'AMP_CLASS_B'
   | 'AMP_CLASS_AB'
   | 'AMP_CLASS_C'
   | 'AMP_CLASS_D'
+  // Outputs & Instruments
+  | 'LIGHT_BULB'
+  | 'LED_PROBE'
+  | 'HEX_DISPLAY'
+  | 'BUZZER'
+  | 'OSCILLOSCOPE_PROBE'
+  | 'CRO_SCOPE'
+  | 'DSO_SCOPE'
   // Annotation
   | 'TEXT_NOTE';
 
-export type Category = 'inputs' | 'gates' | 'outputs' | 'ics' | 'amplifiers' | 'annotations';
+export type Category = 'inputs' | 'gates' | 'discrete' | 'ics' | 'amplifiers' | 'outputs' | 'annotations';
 
 export interface Port {
   id: string;
@@ -54,12 +76,36 @@ export interface Port {
 export interface NodeState {
   value?: SignalState;
   internalState?: Record<string, any>;
-  frequency?: number; // Hz for Clock / Sine Gen
+  frequency?: number; // Hz for Clock / Sine Gen / Oscillators
   amplitude?: number; // V
   gain?: number; // Amplifier gain multiplier
   customColor?: string;
   numInputs?: number;
   text?: string;
+  // Power Supply & Function Generator Specs
+  voltageDc?: number; // 0 - 30V Variable DC
+  voltageAcRms?: number; // 0 - 24V RMS Variable AC
+  waveType?: 'sine' | 'square' | 'triangle' | 'sawtooth';
+  offsetV?: number; // DC Offset Voltage
+  // CRO & DSO Instrument Controls
+  voltsPerDiv?: number;
+  timePerDiv?: number;
+  fftEnabled?: boolean;
+  triggerLevel?: number;
+  // Race condition & Flip-Flop configurations
+  triggerMode?: 'level' | 'master_slave';
+  isRacing?: boolean;
+  propagationDelayNs?: number;
+  // Electronic specs
+  resistance?: number; // Ohms
+  capacitance?: number; // uF
+  inductance?: number; // mH
+  vZener?: number; // V
+  opAmpGain?: number;
+  dutyCycle?: number; // %
+  voltageV?: number; // V
+  currentMa?: number; // mA
+  powerMw?: number; // mW
 }
 
 export interface CircuitNode {
@@ -100,3 +146,4 @@ export interface ComponentMeta {
   defaultInputs: number;
   iconName: string;
 }
+

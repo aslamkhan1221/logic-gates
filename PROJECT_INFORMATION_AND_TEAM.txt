@@ -1,0 +1,171 @@
+================================================================================
+                       EJ-SSPI SIMULATOR: PROJECT DOCUMENTATION
+          Interactive Digital Logic, Power & Analog Electronics Circuit Simulator
+                   Maharashtra State Board of Technical Education (MSBTE)
+                               'K' Scheme Curriculum Aligned
+================================================================================
+
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+EJ-SSPI SIMULATOR is a state-of-the-art web-based interactive electronics circuit
+simulator designed for diploma engineering students in Electronics & Telecommunication 
+Engineering. It combines real-time digital logic gate evaluation, power electronics 
+analysis, analog amplifier characterization, and dual-channel DSO/CRO oscilloscope 
+emulation in a single unified web platform.
+
+Project Repository Name: logic-gates
+Application Title: EJ-SSPI SIMULATOR (Logic & Analog Electronics Simulator)
+Tech Stack: React 19, TypeScript 6.0, Vite 8, Web Audio API, Canvas HTML5, Lucide Icons, CSS3 Glassmorphism
+
+--------------------------------------------------------------------------------
+2. PROJECT AUTHORS, CREATORS & MENTORS
+--------------------------------------------------------------------------------
+
+[1] RANHER KARTIK
+    - Branch: Electronics & Telecommunication Engineering - 3K
+    - Role: Lead Developer & Circuit Engine Architect
+    - Responsibilities:
+      * Designed the core iterative fixed-point circuit evaluation engine (CircuitEvaluator.ts).
+      * Built signal propagation algorithms handling combinational and sequential logic with feedback.
+      * Developed real-time clock node execution and frequency-based oscillator timing.
+      * Created the overall application architecture, state management, and undo/redo history stack.
+
+[2] NAVGHARE
+    - Branch: Electronics & Telecommunication Engineering - 3K
+    - Role: Frontend Developer & Component Designer
+    - Responsibilities:
+      * Developed the interactive drag-and-drop HTML5 Canvas system (Canvas.tsx).
+      * Built Bezier curve wire routing, port highlighting, and connection snapping logic (WireRenderer.tsx).
+      * Designed the modern dark/light glassmorphic UI, component sidebar palette (Palette.tsx), and toast notifications.
+      * Created SVG icon components and responsive layout properties panel (PropertyPanel.tsx).
+
+[3] WAGHMARE
+    - Branch: Electronics & Telecommunication Engineering
+    - Role: Hardware Integration & Preset Circuit Expert
+    - Responsibilities:
+      * Designed and verified 20+ preset circuit diagrams (Presets.ts) including Half/Full Adders, Flip-Flops, Rectifiers, and 555 Timers.
+      * Validated analog amplifier formulas and loadline calculation models against hardware datasheets.
+      * Built realistic parameter calculation models for Power Electronics (Rectifiers, Voltage Regulators, Class A/B/C Amplification).
+      * Ensured simulation accuracy against MSBTE laboratory practical manual standards.
+
+[4] VEDIKA
+    - Branch: Electronics & Telecommunication Engineering
+    - Role: DSO/CRO Oscilloscope & Waveform Developer
+    - Responsibilities:
+      * Implemented the complete dual-channel DSO/CRO Oscilloscope front panel modal (OscilloscopeModal.tsx).
+      * Developed real-time waveform plotting (CH1 vs CH2), Lissajous pattern visualization, and FFT harmonic spectrum analyzer.
+      * Built oscilloscope control knobs (Volts/Div, Time/Div, Position Offset, Trigger Level, Phase Difference).
+      * Created CSV data export functionality for lab report verification.
+
+[5] PROF. VIJAY PATIL
+    - Department: Department of Electronics Engineering
+    - Role: Faculty Guide & Project Mentor
+    - Responsibilities:
+      * Provided academic direction, technical supervision, and pedagogical guidance throughout project development.
+      * Defined curriculum-aligned practical learning outcomes for MSBTE 'K' scheme courses:
+        - Analog Electronics (313324)
+        - Digital Electronics (313325)
+        - Power Electronics (313328)
+      * Supervised experimental validation and observation table accuracy.
+
+
+--------------------------------------------------------------------------------
+3. DETAILED CODE STRUCTURE & FILE BREAKDOWN
+--------------------------------------------------------------------------------
+
+Directory Tree:
+logic-gates/
+├── index.html                    - Entry HTML file with SEO metadata
+├── package.json                  - Dependencies (React 19, TypeScript, Vite, Lucide-React)
+├── vite.config.ts                - Vite bundler setup
+├── src/
+│   ├── main.tsx                  - Application DOM entry point
+│   ├── App.tsx                   - Root React component, global state, modals, team profile
+│   ├── App.css                   - CSS styles for workspace layout
+│   ├── index.css                 - Global design system tokens, glassmorphism, dark/light themes
+│   ├── types/
+│   │   └── logic.ts              - Core TypeScript interfaces: CircuitNode, Wire, NodeType, Port, NodeState
+│   ├── engine/
+│   │   ├── CircuitEvaluator.ts   - Fixed-point signal propagation & clock tick engine
+│   │   ├── GateLogic.ts          - Truth table evaluation functions for all 40+ component types
+│   │   ├── AmplifierEngine.ts    - Mathematical models for Class A/B/AB/C/D amplifiers & Q-point
+│   │   ├── Presets.ts            - Pre-built circuits (Adders, Flip-Flops, Rectifiers, Counters)
+│   │   └── TruthTable.ts         - Automatic truth table generator for combinational circuits
+│   └── components/
+│       ├── Canvas.tsx            - Main HTML5 interactive drag-and-drop workspace canvas
+│       ├── GateNode.tsx          - Individual visual circuit component node with input/output ports
+│       ├── WireRenderer.tsx      - Bezier curve renderer for signal wires with color state
+│       ├── Palette.tsx           - Categorized sidebar containing draggable component library
+│       ├── PropertyPanel.tsx     - Right sidebar for editing component parameters (VCC, freq, gain)
+│       ├── Navbar.tsx            - Top control bar (Run/Pause, Step, Presets, Oscilloscope, Practical Lab)
+│       ├── OscilloscopeModal.tsx - DSO/CRO dual-channel oscilloscope panel with FFT & Lissajous
+│       ├── AmplifierLabModal.tsx - MSBTE Practical Manual & Workbench for Analog Electronics
+│       ├── PowerElectronicsLabModal.tsx - Rectifier & Power Electronics Practical Workbench
+│       ├── TruthTableModal.tsx   - Automatic combinational logic truth table matrix modal
+│       ├── WaveformModal.tsx     - Time-series signal timing waveform viewer
+│       ├── AudioSynth.ts         - Web Audio API synthesizer for relays, switches & buzzers
+│       ├── RealtimeCharacteristicsHUD.tsx - On-canvas live parameter monitoring HUD
+│       └── Toast.tsx             - Animated user notification alerts system
+
+
+--------------------------------------------------------------------------------
+4. KEY FUNCTIONALITIES & MODULES
+--------------------------------------------------------------------------------
+
+A. DIGITAL LOGIC SIMULATION ENGINE
+   - Supports 40+ components across 7 categories:
+     1. Inputs & Supplies: Toggle Switch, Push Button, Const High/Low, Clock (Hz), Sine Wave Gen, LDR Sensor, DC Supply, AC Supply, Function Gen.
+     2. Logic Gates: BUFFER, NOT, AND, OR, NAND, NOR, XOR, XNOR (2 to 8 inputs).
+     3. Discrete Electronics: Resistors, Capacitors, Inductors, Diodes, Zener Diodes, NPN/PNP BJTs, N-MOSFETs.
+     4. Integrated Circuits: SR Latch, D/JK/T Flip-Flops, 2:1 MUX, 1:2 DEMUX, Half/Full Adders, 555 Timer, Op-Amp, 4-bit Counter, 2:4 Decoder.
+     5. Power Amplifiers: Class A, Class B, Class AB, Class C, Class D.
+     6. Outputs & Instruments: Light Bulb, LED Probes, 7-Segment Hex Display, Piezo Buzzer, CRO/DSO Scope Probes.
+     7. Annotations: Custom text notes and sticky labels.
+
+B. MSBTE PRACTICAL MANUAL & LABORATORY WORKBENCH
+   - Implements full practical manual setup for Analog Electronics (313324) Practical No. 1:
+     "Test the performance of single stage Class A power amplifier".
+   - Includes:
+     * Visual Circuit Diagram (Fig 1.1 schematic: VCC, R1, R2, RL, RE, CE, C1, BJT, Input/Output).
+     * Interactive Observation Table (Table 1.1) with live formula calculation:
+       - Input Voltage (Vi), Output Voltage (Vo)
+       - AC Output Power: Pac = Vo² / (2 * RL)
+       - DC Power: Pdc = VCC * ICQ
+       - Collector Efficiency: % Efficiency = (Pac / Pdc) * 100
+       - Base Current (Ib), Collector Current (Ic), Collector-Emitter Voltage (Vce)
+     * Dual Interactive Waveforms:
+       - Time-Domain Sine Wave (Input Vi vs Output Vo)
+       - Transistor Output Characteristics Curve (Ib vs Ic vs Vce) with dynamic DC Load Line and Q-point.
+     * Full MSBTE Practical Questions & Answers:
+       1. Low power vs high power transistor datasheets.
+       2. Transistor ratings comparison table (VCEO, IC, PD, hFE).
+       3. Classification & differentiation of Class A, B, AB, C power amplifiers.
+
+C. DUAL-CHANNEL DSO/CRO OSCILLOSCOPE
+   - Emulates real lab cathode-ray & digital storage oscilloscopes.
+   - Dual channels (CH1 Input / CH2 Output).
+   - Modes: Time-domain, X-Y Lissajous patterns, FFT Harmonic Spectrum Analyzer.
+   - Knobs: Volts/Div (10mV to 10V), Time/Div (0.1ms to 50ms), Trigger Level, Channel Inversion.
+   - Export: Single-click CSV waveform dataset export for offline MATLAB/Excel analysis.
+
+
+--------------------------------------------------------------------------------
+5. HOW TO RUN AND BUILD THE PROJECT
+--------------------------------------------------------------------------------
+
+1. Install Dependencies:
+   npm install
+
+2. Start Local Development Server:
+   npm run dev
+   - Access application at: http://localhost:5173
+
+3. Build Production Bundle:
+   npm run build
+
+4. Run Linter:
+   npm run lint
+
+================================================================================
+Report created for: RANHER KARTIK, NAVGHARE, WAGHMARE, VEDIKA & PROF. VIJAY PATIL.
+================================================================================

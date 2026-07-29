@@ -364,6 +364,93 @@ export function generatePracticalWaveformPoints(
   return points;
 }
 
+export interface MsbteObservationRow {
+  srNo: number;
+  vIn: number;
+  vOut: number;
+  pAc: number; // Watts
+  pDc: number; // Watts
+  efficiency: number; // %
+  iBaseUa: number; // uA
+  iCollectorMa: number; // mA
+  vCe: number; // V
+}
+
+export function calculateMsbteObservationRow(
+  srNo: number,
+  vIn: number,
+  vcc: number = 12,
+  rLoad: number = 220,
+  gain: number = 4.0,
+  beta: number = 100
+): MsbteObservationRow {
+  const maxVout = vcc / 2 - 0.5;
+  const vOut = Number(Math.min(vIn * gain, maxVout).toFixed(2));
+  
+  // Pac = Vo^2 / (2 * RL)
+  const pAcWatts = (vOut * vOut) / (2 * rLoad);
+  
+  // DC Operating point values
+  const vCe = Number((vcc / 2).toFixed(2));
+  const iCqMa = (vcc / (2 * rLoad)) * 1000; // mA
+  const pDcWatts = (vcc * iCqMa) / 1000;
+  
+  const efficiency = pDcWatts > 0 ? (pAcWatts / pDcWatts) * 100 : 0;
+  
+  // Transistor currents
+  const iCollectorMa = Number((iCqMa + (vOut / rLoad) * 1000 * 0.2).toFixed(2));
+  const iBaseUa = Number(((iCollectorMa / beta) * 1000).toFixed(1));
+
+  return {
+    srNo,
+    vIn: Number(vIn.toFixed(2)),
+    vOut,
+    pAc: Number(pAcWatts.toFixed(4)),
+    pDc: Number(pDcWatts.toFixed(3)),
+    efficiency: Number(efficiency.toFixed(2)),
+    iBaseUa,
+    iCollectorMa,
+    vCe,
+  };
+}
+
+export interface BjtCurvePoint {
+  vCe: number;
+  iC: number;
+}
+
+export interface BjtCharacteristicCurve {
+  iBaseUa: number;
+  points: BjtCurvePoint[];
+}
+
+export function generateBjtOutputCharacteristics(
+  beta: number = 100,
+  maxVce: number = 15
+): BjtCharacteristicCurve[] {
+  const iBaseLevels = [10, 20, 30, 40, 50]; // uA
+  const curves: BjtCharacteristicCurve[] = [];
+
+  for (const iB of iBaseLevels) {
+    const points: BjtCurvePoint[] = [];
+    const iSatMa = (beta * (iB / 1000)); // mA
+
+    for (let vCe = 0; vCe <= maxVce; vCe += 0.2) {
+      // Saturation region transition knee at Vce ~ 0.7V
+      const kneeFactor = 1 - Math.exp(-vCe / 0.5);
+      const iC = iSatMa * kneeFactor + 0.05 * vCe; // Include slight Early effect slope
+      points.push({
+        vCe: Number(vCe.toFixed(2)),
+        iC: Number(iC.toFixed(2)),
+      });
+    }
+
+    curves.push({ iBaseUa: iB, points });
+  }
+
+  return curves;
+}
+
 export const generateAmplifierWaveform = (
   ampType: NodeType,
   numPoints: number = 200,
@@ -379,3 +466,4 @@ export const generateAmplifierWaveform = (
   };
   return generatePracticalWaveformPoints(testParams, numPoints, timeOffset);
 };
+
