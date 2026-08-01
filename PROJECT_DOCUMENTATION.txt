@@ -1,0 +1,945 @@
+﻿================================================================================
+         EJ-SSPI SIMULATOR - COMPLETE PROJECT DOCUMENTATION
+         MSBTE K-Scheme Electronics Engineering Lab Simulator
+================================================================================
+         From BASIC to ADVANCED - Written in Easy Language
+         For Students, Developers, and Educators
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  PART 1 - BASIC OVERVIEW
+    1.1  What is this project?
+    1.2  What does this app do?
+    1.3  Programming Languages Used
+    1.4  Libraries and Tools Used (and what they do)
+    1.5  How the project is run
+  PART 2 - INTERMEDIATE: FOLDER STRUCTURE
+    2.1  Root Directory Files
+    2.2  /src Folder Overview
+    2.3  /src/types - Data Definitions
+    2.4  /src/engine - Brain of the App
+    2.5  /src/components - Visual Pieces
+    2.6  /src/data - Content Storage
+  PART 3 - ADVANCED: FILE-BY-FILE DEEP DIVE
+    (3.1 to 3.37 - all files explained)
+  PART 4 - HOW DATA FLOWS IN THE APP
+  PART 5 - KEY CONCEPTS EXPLAINED SIMPLY
+  PART 6 - SUMMARY TABLE
+
+================================================================================
+PART 1 - BASIC OVERVIEW
+================================================================================
+
+1.1  WHAT IS THIS PROJECT?
+---------------------------
+Name        : EJ-SSPI SIMULATOR
+Full Form   : Electronics & Junior - Single Stage Power Amplifier / Signal Processing Interactive Simulator
+Target User : MSBTE Electronics Engineering Students (K-Scheme syllabus)
+Purpose     : A website (runs in a browser) that lets students:
+              - BUILD digital logic circuits by dragging and dropping components
+              - SIMULATE how electricity flows through those circuits in real-time
+              - LEARN analog electronics (amplifiers, power circuits, oscilloscopes)
+              - STUDY exam notes with quizzes, flashcards, and AI tutor help
+
+Think of it like a 'virtual electronics lab' - students don't need actual hardware;
+they can do all their MSBTE practicals on a computer or phone.
+
+1.2  WHAT DOES THIS APP DO?
+----------------------------
+The app has FOUR main sections:
+
+  [A] CIRCUIT SIMULATOR (Digital)
+      - Drag components (AND/OR/NOT gate, flip-flops, etc.) onto a canvas (drawing board)
+      - Connect them with wires
+      - Click Run to see signals flow (1s and 0s) in real time
+      - View truth tables, waveforms, and oscilloscope output
+
+  [B] ANALOG ELECTRONICS LAB (MSBTE Practical Lab)
+      - Simulates Practical No. 1: Class A Power Amplifier (SL100 NPN transistor circuit)
+      - Animated circuit diagram showing current flow through components
+      - Live calculations: Voltage Gain, Efficiency, Ic, Ib, Ie currents
+      - Power Electronics practicals (rectifiers, Zener regulators, converters)
+
+  [C] EXAM NOTES
+      - Full subject notes: Digital Technique (22317) and Analog Electronics (22320)
+      - Flashcards, micro-quizzes, memory tricks, real-life examples
+      - Interactive step-by-step problem solving
+      - AI Tutor Bot that answers student questions
+
+  [D] PRACTICE SECTION
+      - Question bank with multiple-choice and numerical problems
+      - Immediate answer checking with full explanation
+
+1.3  PROGRAMMING LANGUAGES USED
+---------------------------------
+
+  LANGUAGE          WHERE USED                  WHAT IT DOES
+  -----------       ----------------------       -----------------------------------
+  HTML              index.html                   Creates the basic webpage structure.
+                                                 Like the skeleton of a body.
+
+  CSS               index.css, App.css           Makes the webpage look beautiful -
+                    styles/index.css             colors, fonts, animations, layout.
+                                                 Like the clothes on the body.
+
+  TypeScript (TS)   All .ts files                TypeScript = JavaScript with safety
+                    (engine, types)              rules. Catches mistakes BEFORE the
+                                                 code runs. Like spellcheck for code.
+
+  TSX               All .tsx files               TSX = TypeScript + JSX.
+                    (components, App)            JSX lets you write HTML-like code
+                                                 inside TypeScript files.
+                                                 React uses this to build the UI.
+
+  SIMPLE ANALOGY:
+  - HTML  = Blueprint of a building
+  - CSS   = Paint, furniture, and decoration
+  - TS/JS = Electrical wiring and plumbing
+  - TSX   = Combines TS + HTML into one file for building React components
+
+1.4  LIBRARIES AND TOOLS USED
+--------------------------------
+
+  [A] MAIN DEPENDENCIES - These run inside the final app:
+
+  react (v19.2.7)
+    The most popular JavaScript UI library. Builds the app as 'components'
+    (reusable UI pieces). Like LEGO blocks - Navbar, Canvas, Modal are all
+    separate React components. When data changes, only affected parts redraw.
+    Functions used: useState, useEffect, useRef, useCallback, React.FC
+
+  react-dom (v19.2.7)
+    Works with React to physically show components inside the browser HTML.
+    Main function: ReactDOM.createRoot().render() in main.tsx.
+    Connects React's virtual world to the real browser webpage.
+
+  lucide-react (v1.25.0)
+    A library of 1000+ beautiful SVG icons (Play, Pause, Trash, Grid, etc.)
+    Used as React components: <Play />, <Trash2 />, <ZoomIn />, etc.
+    Icons used in: Navbar buttons, Palette items, ExamNotes cards.
+
+  canvas-confetti (v1.9.4)
+    Creates a colorful confetti celebration animation in the browser.
+    Called as: confetti({ particleCount: 100, spread: 70 })
+    Used when students pass a micro quiz or complete a topic milestone.
+
+  [B] DEV DEPENDENCIES - Tools used only during development:
+
+  vite (v8.1.1)
+    The build tool. Compiles all TypeScript/TSX files into browser-readable
+    JavaScript. Also runs the development server at localhost:5173 with
+    Hot Module Replacement (HMR) - code changes appear instantly.
+
+  @vitejs/plugin-react (v6.0.3)
+    Vite plugin enabling React JSX transformation and fast refresh.
+
+  typescript (v6.0.2)
+    Adds type safety to JavaScript. tsc (TypeScript Compiler) checks code
+    for errors before running. Run: npx tsc --noEmit to check for errors.
+
+  oxlint (v1.71.0)
+    A very fast JavaScript/TypeScript code quality checker (linter).
+    Flags bad practices, unused variables, and style inconsistencies.
+    Run: npm run lint
+
+  [C] BROWSER BUILT-IN APIs (no install needed - in every browser):
+
+  Web Audio API (AudioContext, OscillatorNode, GainNode)
+    Used in: AudioSynth.ts
+    Creates sound effects mathematically - no audio files needed.
+    OscillatorNode generates sound waves. GainNode controls volume.
+    Plays beeps when toggling switches, connecting wires, buzzer sounds.
+
+  SVG (Scalable Vector Graphics)
+    Used in: AmplifierLabModal.tsx, WireRenderer.tsx, GateNode.tsx
+    Draws circuit diagrams, connecting wires, and current flow animations
+    using code instead of image files. Scales perfectly at any zoom level.
+
+  CSS Animations (@keyframes)
+    Used in: index.css
+    Animates the dashed current flow lines and glowing particle dots in
+    the amplifier circuit diagram (currentFlowForward, currentFlowReverse).
+
+  localStorage (Browser Storage)
+    Saves student progress, bookmarks, notes in the browser. Data persists
+    even after closing the tab (until browser cache is cleared).
+
+1.5  HOW THE PROJECT IS RUN
+-----------------------------
+
+  DEVELOPMENT (Testing while building):
+    > npm run dev
+    Starts the Vite development server. App opens at http://localhost:5173
+    Any code changes appear instantly without needing to refresh (HMR).
+
+  BUILD (Creating final files for deployment/hosting):
+    > npm run build
+    Creates optimized, compressed files in the /dist folder for web hosting.
+
+  TYPE CHECK (Checking for TypeScript errors):
+    > npx tsc --noEmit
+    Scans all TypeScript files for type errors. Does not produce any output files.
+
+  LINT (Code quality check):
+    > npm run lint
+    Runs oxlint to find code quality problems and style issues.
+
+================================================================================
+PART 2 - INTERMEDIATE: FOLDER STRUCTURE
+================================================================================
+
+2.1  ROOT DIRECTORY FILES
+--------------------------
+
+  logic gates/                  <- Main project folder (workspace root)
+  |
+  +-- index.html                <- The ONE HTML file - entry point of the app
+  +-- package.json              <- Project info + list of all libraries used
+  +-- package-lock.json         <- Exact locked versions of all libraries
+  +-- vite.config.ts            <- Configuration for the Vite build tool
+  +-- tsconfig.json             <- Master TypeScript configuration
+  +-- tsconfig.app.json         <- TypeScript config for the main app code
+  +-- tsconfig.node.json        <- TypeScript config for Node.js tools
+  +-- .oxlintrc.json            <- Code lint rules configuration
+  +-- vercel.json               <- Deployment config for Vercel hosting
+  +-- .env                      <- Secret environment variables (e.g., AI API key)
+  +-- .env.example              <- Template showing what .env should contain
+  +-- .gitignore                <- Files that Git version control should NOT track
+  +-- README.md                 <- Short project introduction
+  +-- PROJECT_INFORMATION_AND_TEAM.txt  <- Team info
+  |
+  +-- /src                      <- All source code lives here
+  +-- /public                   <- Static files (images, favicon)
+  +-- /dist                     <- Built output files (auto-generated on build)
+  +-- /node_modules             <- All installed libraries (auto-generated)
+
+2.2  /src FOLDER OVERVIEW
+---------------------------
+
+  src/
+  +-- main.tsx            <- App startup - mounts React into index.html
+  +-- App.tsx             <- Root component - manages ALL app state
+  +-- App.css             <- CSS for App.tsx layout
+  +-- index.css           <- Global CSS (animations, current flow, themes)
+  |
+  +-- /types              <- TypeScript data structure definitions
+  +-- /engine             <- Business logic - the BRAIN (no UI here)
+  +-- /components         <- UI components - the FACE (visual parts)
+  +-- /data               <- Static content (exam notes, questions)
+  +-- /styles             <- Extra CSS files
+  +-- /assets             <- Image and media files
+
+2.3  /src/types - DATA DEFINITIONS
+------------------------------------
+  These files describe the SHAPE of data used in the app.
+  They contain ONLY type definitions, NO actual logic.
+  TypeScript uses these to prevent mistakes at development time.
+
+  types/
+  +-- logic.ts       <- Defines: CircuitNode, Wire, Port, NodeType, NodeState
+  +-- examNotes.ts   <- Defines: Topic, Unit, Chapter, Subject, Flashcard, UserNote
+
+2.4  /src/engine - BRAIN OF THE APP
+--------------------------------------
+  Contains pure logic (calculations, algorithms). NO visual code here.
+  engine/
+  +-- GateLogic.ts        <- Defines all 60+ components and their logic rules
+  +-- CircuitEvaluator.ts <- Runs signal propagation simulation through the circuit
+  +-- TruthTable.ts       <- Generates truth tables for any gate automatically
+  +-- AmplifierEngine.ts  <- Calculates amplifier metrics (Vout, Gain, Efficiency)
+  +-- Presets.ts          <- Pre-built circuit examples (Half Adder, Counter, etc.)
+
+2.5  /src/components - VISUAL PIECES
+--------------------------------------
+
+  components/
+  +-- Canvas.tsx                   <- Main drawing board (drag-drop area)
+  +-- GateNode.tsx                 <- Renders each component on the canvas
+  +-- WireRenderer.tsx             <- Draws connecting wires (green=1, gray=0)
+  +-- Navbar.tsx                   <- Top toolbar (Play/Pause, Zoom, Export)
+  +-- Palette.tsx                  <- Left panel - list of draggable components
+  +-- PropertyPanel.tsx            <- Right panel - selected component settings
+  +-- RealtimeCharacteristicsHUD   <- Live electrical measurements display
+  +-- TruthTableModal.tsx          <- Pop-up truth table for logic gates
+  +-- AmplifierLabModal.tsx        <- MSBTE Practical Lab (Class A, B, C, D, D)
+  +-- OscilloscopeModal.tsx        <- Digital oscilloscope simulation display
+  +-- PowerElectronicsLabModal.tsx <- MSBTE Power electronics practicals
+  +-- WaveformModal.tsx            <- Signal waveform viewer (time-domain)
+  +-- Toast.tsx                    <- Small notification messages
+  +-- AudioSynth.ts                <- Web Audio API sound effects engine
+  |
+  +-- examNotes/                  <- Exam Notes sub-module
+      +-- ExamNotesSidebar.tsx     <- Left navigation sidebar
+      +-- ExamNotesHome.tsx        <- Dashboard home screen
+      +-- TopicViewer.tsx          <- Detailed topic content page
+      +-- PracticeSection.tsx      <- Practice question bank
+      +-- AITutorBot.tsx           <- AI chatbot for student help
+      +-- InteractiveStepSolver.tsx <- Step-by-step problem solver
+      +-- GateSandboxCard.tsx      <- Mini interactive gate inside notes
+      +-- LogicFamiliesChart.tsx   <- TTL vs CMOS vs ECL comparison chart
+
+2.6  /src/data - CONTENT STORAGE
+----------------------------------
+
+  data/
+  +-- examNotesData.ts  <- ALL topic content for Digital Technique + Analog
+  |                        Electronics (units, chapters, topics, flashcards,
+  |                        quizzes, formulas, examples). Size: ~59 KB
+  +-- practiceData.ts   <- Practice questions database. Size: ~20 KB
+
+================================================================================
+PART 3 - ADVANCED: FILE-BY-FILE DEEP DIVE
+================================================================================
+
+3.1  index.html  (Size: 577 bytes)
+------------------------------------
+The ONLY HTML file in the entire project. React apps use ONE HTML file.
+The rest of the UI is built dynamically using JavaScript/React.
+
+  What it contains:
+  <title>: Browser tab text = 'EJ-SSPI SIMULATOR'
+  <meta name='description'>: SEO description for search engines
+  <div id='root'>: Empty placeholder - React fills this with the whole app
+  <script src='/src/main.tsx'>: Loads the React application
+
+  Code flow: index.html loads -> main.tsx runs -> App.tsx loads -> entire app appears
+
+3.2  src/main.tsx  (Size: 243 bytes)
+--------------------------------------
+STARTING POINT of the React application.
+
+  What it does:
+  - Imports React and ReactDOM from the react/react-dom libraries
+  - Imports App.tsx (the root component)
+  - Imports global CSS styles
+  - Calls ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+  - Wraps App in <React.StrictMode> which helps find bugs during development
+
+3.3  src/App.tsx  (Size: ~46 KB - largest logic file)
+--------------------------------------------------------
+The ROOT COMPONENT - the 'command center' of the entire application.
+Manages all shared state that multiple child components need.
+
+  State managed by App.tsx:
+  CIRCUIT STATE:
+  - nodes[]           : Array of all components placed on the canvas
+  - wires[]           : Array of all wire connections between components
+  - selectedNodeIds[] : Currently selected component(s)
+  - clipboard[]       : Copy-pasted components buffer
+  - history[]         : Undo/Redo stack of circuit snapshots
+
+  UI STATE:
+  - activeTab         : Which section is currently shown (simulator/exam notes)
+  - isRunning         : Whether the circuit simulation is running
+  - theme             : 'dark' or 'light' mode
+  - zoom, pan         : Canvas viewport zoom level and pan position
+  - clockSpeed        : Simulation speed in Hz
+
+  Key functions:
+  - handleAddNode()      : Adds new component to canvas
+  - handleDeleteNodes()  : Removes selected components
+  - handleAddWire()      : Creates wire connection between ports
+  - handleUndo/Redo()    : Navigate undo/redo history stack
+  - handleExportJson()   : Save circuit to .json file
+  - handleImportJson()   : Load circuit from .json file
+  - handleExportPng()    : Save canvas as PNG image
+
+  Simulation Loop (heart of the simulator):
+  Uses setInterval() to run repeatedly every (1000/clockSpeed) ms.
+  Each tick: tickClockNodes() -> propagateCircuit() -> setNodes/setWires
+  This makes signals appear to 'flow' in real time on the canvas.
+
+3.4  src/types/logic.ts  (Size: 3 KB)
+---------------------------------------
+Defines all DATA STRUCTURES for the circuit simulator.
+
+  SignalState = 0 | 1 | null
+  A wire/port is OFF (0), ON (1), or UNDEFINED (null)
+
+  NodeType (63 types including):
+  'SWITCH' | 'BUTTON' | 'CLOCK' | 'SINE_GEN' | 'DC_SUPPLY' | 'AC_SUPPLY'
+  'AND' | 'OR' | 'NOT' | 'NAND' | 'NOR' | 'XOR' | 'XNOR'
+  'RESISTOR' | 'CAPACITOR' | 'NPN_BJT' | 'DIODE' | 'ZENER_DIODE'
+  'SR_LATCH' | 'D_FLIPFLOP' | 'JK_FLIPFLOP' | 'T_FLIPFLOP'
+  'HALF_ADDER' | 'FULL_ADDER' | 'MUX_21' | 'OP_AMP' | 'TIMER_555'
+  'AMP_CLASS_A' | 'AMP_CLASS_B' | 'LED_PROBE' | 'DSO_SCOPE' | etc.
+
+  Port { id, name, type: 'input'|'output', value: SignalState, relativeX, relativeY }
+  -> A connection point on a component (where wires attach)
+
+  CircuitNode { id, type, label, x, y, width, height, inputs[], outputs[], state }
+  -> Represents ONE component placed on the canvas
+
+  Wire { id, fromNodeId, fromPortId, toNodeId, toPortId, signal }
+  -> Represents ONE connection between two components
+
+  CircuitData { version, nodes[], wires[] }
+  -> The complete circuit snapshot - used for JSON export/import
+
+  NodeState { value, frequency, amplitude, resistance, capacitance, voltageDc, ... }
+  -> All possible properties a component can have (each component uses
+     only the relevant fields from this shared structure)
+
+3.5  src/types/examNotes.ts  (Size: 3.4 KB)
+---------------------------------------------
+Defines data shapes for the Exam Notes module.
+
+  Flashcard { id, front, back }
+  -> A question-answer card for student revision
+
+  MicroQuizQuestion { id, question, options[], correctAnswer, explanation }
+  -> Multiple-choice quiz question with 4 options
+
+  Topic (the biggest structure - contains ALL of):
+  - conceptSummary, diagramSteps[], stepByStepExamples[]
+  - memoryTricks[], realLifeExamples[], flashcards[]
+  - truthTable, importantExamPoints, commonMistakes[]
+  - quickRevision, practiceProblems[], microQuiz[]
+
+  Hierarchy: Subject -> Unit -> Chapter -> Topic
+
+  UserExamNotesState tracks student personal progress:
+  - completedTopicIds[], bookmarkedTopicIds[], notes[]
+  - quizScores{}, studyTimeSeconds, revisionCount
+
+3.6  src/engine/GateLogic.ts  (Size: 37 KB - most complex engine file)
+-----------------------------------------------------------------------
+THE CORE LOGIC ENGINE. Defines ALL 60+ components and their behavior.
+
+  COMPONENT_METADATA[] array:
+  Lists all 60+ components with display info used by the Palette:
+  { type, label, category, description, defaultWidth, defaultHeight, iconName }
+
+  createDefaultPortsForNode(type, nodeId):
+  Creates the correct Port objects for each component type.
+  AND gate -> 2 input ports + 1 output port
+  JK Flip-Flop -> J, K, CLK inputs + Q, NOT-Q outputs
+
+  evaluateNodeLogic(node) - THE MOST IMPORTANT FUNCTION:
+  Takes a CircuitNode and returns its output based on current inputs.
+
+  Logic rules for each gate:
+  AND gate:      Output=1 ONLY if ALL inputs are 1. Otherwise 0.
+  OR gate:       Output=1 if ANY input is 1.
+  NOT gate:      Output=opposite of input (0->1, 1->0)
+  NAND gate:     Output=NOT(AND) - opposite of AND gate output
+  XOR gate:      Output=1 ONLY if inputs are DIFFERENT
+  XNOR gate:     Output=1 ONLY if inputs are SAME
+  Half Adder:    SUM=A XOR B, CARRY=A AND B
+  Full Adder:    SUM=A XOR B XOR Cin, COUT=(A AND B) OR (Cin AND (A XOR B))
+  D Flip-Flop:   Q changes to D value only on rising clock edge
+  JK Flip-Flop:  J=1,K=0->Set | J=0,K=1->Reset | J=1,K=1->Toggle
+  T Flip-Flop:   T=1->Toggle Q on clock | T=0->Hold Q
+  SR Latch:      S=1->Set Q=1 | R=1->Reset Q=0 | S=R=0->Hold | S=R=1->Invalid
+  MUX 2:1:       SEL=0->output=I0 | SEL=1->output=I1
+  DEMUX 1:2:     SEL=0->data goes to O0 | SEL=1->data goes to O1
+  Counter 4-bit: Counts 0->15 in binary, wraps to 0 on overflow
+  Decoder 2:4:   Activates one of 4 outputs based on 2-bit input
+  Timer 555:     Generates square wave using RC timing formula
+  NPN BJT:       If Base=HIGH, Collector-Emitter conducts (ON)
+
+3.7  src/engine/CircuitEvaluator.ts  (Size: 4.5 KB)
+----------------------------------------------------
+Runs the SIMULATION - makes signals flow through the entire circuit.
+
+  propagateCircuit(nodes[], wires[]) function:
+  Algorithm: Fixed-Point Iteration (max 15 passes):
+    Pass 1: For each wire -> read source output port -> write to wire -> write to target input
+    Pass 2: For each node -> call evaluateNodeLogic() -> update output port values
+    Repeat until NOTHING changes OR 15 iterations done (prevents infinite loops)
+
+  Why iterate multiple times?
+  Feedback circuits (e.g., SR latch) need multiple passes to reach stable state.
+
+  tickClockNodes(nodes[]) function:
+  Flips state (0->1 or 1->0) of all CLOCK, AC_SUPPLY, FUNCTION_GEN, SINE_GEN nodes.
+  Called before propagateCircuit() on every simulation timer tick.
+
+3.8  src/engine/TruthTable.ts  (Size: 3.8 KB)
+----------------------------------------------
+Generates a TRUTH TABLE for any gate automatically.
+
+  getBooleanExpression(type, inputNames[]):
+  Returns Boolean algebra expression as text:
+  AND (A, B)   -> 'Y = A . B'
+  OR  (A, B)   -> 'Y = A + B'
+  NOT (A)      -> 'Y = NOT A'
+  XOR (A, B)   -> 'Y = A XOR B'
+  Half Adder   -> 'SUM = A XOR B, COUT = A . B'
+
+  generateTruthTableForNode(node):
+  For N inputs -> generates 2^N rows (all binary combinations)
+  For each row: sets dummy inputs -> calls evaluateNodeLogic() -> records output
+  Marks the currently ACTIVE row (green) matching live input values
+
+3.9  src/engine/AmplifierEngine.ts  (Size: 13.9 KB)
+----------------------------------------------------
+Contains PHYSICS FORMULAS for analog amplifier calculations.
+
+  AMPLIFIER_LAB_SPECS record:
+  Default parameters for each amplifier class:
+  AMP_CLASS_A:  Vcc=12V, Vbias=0.7V, RL=16 Ohm, Vin=1.0V, Beta=100, f=1kHz
+  AMP_CLASS_B:  Push-pull NPN+PNP, conducts 180 degrees, max efficiency 78.5%
+  AMP_CLASS_AB: Reduces crossover distortion of Class B slightly
+  AMP_CLASS_C:  Conducts less than 180 degrees, used in RF tuned circuits
+  AMP_CLASS_D:  PWM (Pulse Width Modulation) digital switching type
+
+  calculateAmplifierMetrics(params) uses real electronics formulas:
+  Vout = Vin x Av
+  Voltage Gain dB = 20 x log10(Av)
+  Power Gain dB   = 10 x log10(Ap)
+  Efficiency      = (Pac_out / Pdc) x 100 percent
+  VCE(Q)         = DC quiescent operating voltage (Q-point)
+  IC(Q)          = DC quiescent collector current
+  IC(sat)        = Vcc / RL (saturation current)
+  THD percent    = Total Harmonic Distortion percentage
+
+  generateWaveformData(params, metrics):
+  Creates (time, Vout) data point arrays for one complete signal cycle.
+  Each class shows characteristic waveform distortion:
+  Class A: Clean sine wave output (no distortion)
+  Class B: Crossover distortion visible near zero crossing (0.7V dead zone)
+  Class C: Only positive peak visible, rest completely clipped
+  Class D: Square/PWM switching waveform output
+
+  calculateHarmonics(type, metrics):
+  Computes FFT harmonic components (fundamental + 2nd, 3rd, 4th harmonics)
+  Used to display the frequency spectrum in the oscilloscope FFT view.
+
+3.10  src/engine/Presets.ts  (Size: 40.6 KB)
+---------------------------------------------
+PRE-BUILT CIRCUIT EXAMPLES that students can load instantly from the Navbar.
+Each preset is a complete CircuitData {nodes[], wires[]} object.
+
+  Examples included:
+  - Half Adder (XOR + AND gates)
+  - Full Adder circuit
+  - SR Latch using NOR gates (feedback loop)
+  - D Flip-Flop with clock signal
+  - JK Flip-Flop with toggle mode demonstration
+  - 4-bit Binary Counter (0 to 15)
+  - 7-Segment Display Decoder
+  - Traffic Light Controller
+  - ALU (Arithmetic Logic Unit) demonstration
+
+  This file is large (40 KB) because each preset stores x/y coordinates
+  of every component AND exact wire connection definitions.
+
+3.11  src/components/Canvas.tsx  (Size: 11.8 KB)
+---------------------------------------------------
+The MAIN DRAWING BOARD where users interact with the circuit.
+
+  Features:
+  - Drag-and-drop: Accepts components dragged from the Palette
+  - Pan: Click and drag empty space to move around the canvas
+  - Zoom: Mouse scroll wheel zooms in/out (state managed in App.tsx)
+  - Box Selection: Click and drag to select multiple components at once
+  - Wire Drawing: Click output port -> drag -> click input port to connect
+  - Snap to Grid: Optionally aligns component positions to a grid
+
+  Internal state:
+  - draftWire: The wire currently being drawn (shows as preview line)
+  - isPanning, panStart: Pan interaction tracking
+  - selectionBox: Rectangle drawn during multi-select drag
+
+  Renders: WireRenderer + GateNode for each component + selection box + draft wire
+
+3.12  src/components/GateNode.tsx  (Size: 27.2 KB)
+----------------------------------------------------
+Renders ONE COMPONENT on the canvas - the visual for every gate and IC.
+
+  Features:
+  - Draws component body (rectangle or custom SVG shape)
+  - Draws port circles (connection points for wires)
+  - Shows component label text
+  - Highlights when selected (glowing border)
+  - Shows signal state visually (active=bright, inactive=dim)
+
+  Component-specific custom visuals:
+  SWITCH:        Toggle switch with on/off state
+  LED_PROBE:     Glowing LED circle with color
+  LIGHT_BULB:    Bulb shape that glows when active
+  HEX_DISPLAY:   7-segment display rendering 0 through F
+  NPN_BJT:       Transistor symbol (B, C, E terminals)
+  OP_AMP:        Triangle amplifier symbol with inverting/non-inverting inputs
+  CLOCK:         Shows configured frequency in Hz
+
+3.13  src/components/WireRenderer.tsx  (Size: 4.5 KB)
+-------------------------------------------------------
+Draws all WIRES connecting components.
+
+  getPortAbsoluteCoords(node, port):
+  Calculates exact (x,y) pixel position of any port on the canvas.
+  Formula: absolute = node.position + port.relativePosition
+
+  For each wire:
+  - Calculates start (output port) and end (input port) coordinates
+  - Draws SVG cubic bezier curve between them (smooth S-curve)
+  - Wire color: GREEN=signal is 1 (HIGH) | GRAY=signal is 0 (LOW) | RED=selected
+  - Wire gets thicker when selected
+
+3.14  src/components/Navbar.tsx  (Size: 15.9 KB)
+--------------------------------------------------
+The TOP TOOLBAR of the application.
+
+  Buttons and controls:
+  Play/Pause    -> Start or stop the circuit simulation
+  Step          -> Advance simulation by one tick manually
+  Reset         -> Clear all signal values to initial state
+  Speed Slider  -> Control simulation speed (clock rate)
+  Presets Menu  -> Load pre-built circuit examples
+  Clear         -> Delete all components from the canvas
+  Export JSON   -> Save circuit as .json file
+  Import JSON   -> Load circuit from .json file
+  PNG Export    -> Save canvas as PNG image
+  Theme Toggle  -> Switch dark/light mode
+  Zoom In/Out   -> Zoom the canvas view
+  Fit Screen    -> Auto-fit all components in view
+  Grid Snap     -> Enable/disable snap-to-grid
+  Undo/Redo     -> History navigation (Ctrl+Z / Ctrl+Y)
+  Mute          -> Toggle all sound effects
+  Truth Table   -> Open truth table for selected gate
+  Waveform      -> Open waveform viewer
+  Oscilloscope  -> Open digital oscilloscope panel
+  All icons from the lucide-react library.
+
+3.15  src/components/Palette.tsx  (Size: 8.9 KB)
+--------------------------------------------------
+LEFT SIDEBAR showing all available components to place.
+
+  - Components organized in categories: Inputs, Gates, Discrete, ICs, Amplifiers, Outputs
+  - Each item shows lucide-react icon + component name
+  - DRAG from Palette -> DROP onto Canvas to place a component
+  - Reads from COMPONENT_METADATA in GateLogic.ts for the component list
+
+3.16  src/components/PropertyPanel.tsx  (Size: 37 KB)
+-------------------------------------------------------
+RIGHT SIDEBAR for editing properties of the selected component.
+
+  Examples of editable properties:
+  SWITCH/BUTTON:  Toggle HIGH/LOW manually
+  CLOCK:          Set frequency (1Hz to 10kHz), duty cycle
+  DC_SUPPLY:      Set voltage (0V to 30V)
+  AC_SUPPLY:      Set RMS voltage, frequency
+  FUNCTION_GEN:   Wave type (sine/square/triangle/sawtooth), frequency, amplitude
+  RESISTOR:       Resistance in Ohms/kOhms/MOhms
+  CAPACITOR:      Capacitance in pF to mF
+  INDUCTOR:       Inductance in uH to H
+  ZENER_DIODE:    Zener breakdown voltage (Vz)
+  NPN_BJT:        Beta (hFE) transistor gain value
+  DSO_SCOPE:      Volts/Div, Time/Div, trigger level
+  AND/OR gates:   Number of inputs (2, 3, or 4)
+  TEXT_NOTE:      Edit annotation text content
+  Also shows real-time V, I, P calculations for electronics components.
+
+3.17  src/components/RealtimeCharacteristicsHUD.tsx  (Size: 14.9 KB)
+----------------------------------------------------------------------
+HEADS-UP DISPLAY showing live electrical measurements.
+
+  Live data shown for selected component:
+  Resistors:   Current (mA), Power (mW), Voltage drop (V)
+  BJT:         Ic, Ib, Ie, Vce, Power dissipation, Beta
+  Op-Amps:     Gain, Vin, Vout, Bandwidth
+  Capacitors:  Stored energy = 0.5 x C x V^2
+  Inductors:   Stored energy = 0.5 x L x I^2
+  555 Timer:   Frequency, duty cycle, t_on, t_off
+  Amplifiers:  Gain (dB), Efficiency %, THD %
+  Displayed as glowing color-coded cards at bottom of screen.
+  Updates in real-time as simulation runs or sliders change.
+
+3.18  src/components/TruthTableModal.tsx  (Size: 10.6 KB)
+-----------------------------------------------------------
+POP-UP WINDOW showing the complete truth table for a selected gate.
+
+  - Auto-generates all 2^N rows for N-input gates
+  - Highlights currently ACTIVE row (matching live inputs) in green
+  - Shows Boolean expression at top (e.g., Y = A . B)
+  - Color-coded cells: GREEN = 1 (HIGH) | GRAY = 0 (LOW)
+  - Works for: AND, OR, NOT, NAND, NOR, XOR, XNOR, Adders, MUX, Flip-Flops
+3.19  src/components/AmplifierLabModal.tsx  (Size: 99 KB)
+----------------------------------------------------------
+MSBTE ANALOG ELECTRONICS PRACTICAL LAB. Most feature-rich file in the project.
+
+  MSBTE Practicals Covered:
+  Practical 1: Single Stage Class A Power Amplifier (SL100 NPN transistor)
+  Practical 2: Class B Push-Pull Amplifier
+  Practical 3: Class AB Complementary Symmetry Amplifier
+  Practical 4: Class C Tuned Amplifier
+  Practical 5: Class D PWM Switching Amplifier
+
+  [1] Animated SVG Circuit Diagram:
+  Components: SL100 NPN, R1=47k, R2=33k, RL=8 Ohm, RE=100 Ohm, CE=47uF, C1, C2
+  5 animated current flow paths (moving dashed lines + glowing particle dots):
+  RED    = Collector Current Ic: Vcc -> RL -> Collector -> Emitter -> GND
+  YELLOW = Base Bias Current Ib: Divider node -> Base terminal
+  GREEN  = Emitter Current Ie: Emitter -> RE -> GND (CE bypass cap)
+  WHITE  = Bias Divider: Through R1 and R2 voltage divider
+  BLUE   = AC Signal: Vi -> C1 -> Base | Collector -> C2 -> Vo
+  Toggle: Conventional current (+ to -) vs Electron flow (- to +)
+  Filter: Show all paths or highlight one specific current path
+
+  [2] Interactive Sliders:
+  Vcc (0V to 24V), Vin amplitude (0V to 5V peak)
+  RL selector (8/16/100/1000 Ohm), Transistor Beta (50 to 400)
+
+  [3] Real-Time Ammeter Badges on wires:
+  Ic (mA), Ib (uA), Ie (mA), Ibias (uA), VCE (V)
+
+  [4] HUD - 4 metric cards:
+  Voltage Gain (Av and dB), Efficiency (eta%), Operating Point (VCE, ICQ)
+  Power Analysis (Pin, Pout, Pdc in mW)
+
+  [5] Waveform Panel:
+  Input sinewave Vi and Output Vo plotted. Phase inversion shown (180 degrees).
+
+  [6] MSBTE Observations Table:
+  Auto-filled table with Vin, Vout, Gain for 5 different Vin levels.
+
+  [7] Component Hover Tooltips:
+  Hovering over any component shows floating card with explanation and live values.
+
+3.20  src/components/OscilloscopeModal.tsx  (Size: 37.6 KB)
+-------------------------------------------------------------
+DIGITAL OSCILLOSCOPE simulation shown as a pop-up panel.
+
+  - Real-time waveforms for connected circuit nodes
+  - Configurable Time/Div (time scale) and Volts/Div (voltage scale)
+  - Trigger level control (like a real oscilloscope)
+  - FFT view: shows frequency spectrum (fundamental + harmonics)
+  - Multiple channel display (CH1 and CH2)
+  - Auto measurements: Peak voltage, RMS, Frequency, Period
+  - Auto-scale and Hold mode (freeze the waveform display)
+
+3.21  src/components/PowerElectronicsLabModal.tsx  (Size: 128.6 KB)
+--------------------------------------------------------------------
+MSBTE POWER ELECTRONICS PRACTICALS. The biggest single file in the project.
+
+  Practicals Covered:
+  - Rectifiers: Half Wave, Full Wave Centre-Tap, Bridge Rectifier
+  - Filters: Capacitor filter, LC filter, pi-filter
+  - Zener Voltage Regulator (line and load regulation)
+  - SCR (Silicon Controlled Rectifier) V-I characteristics
+  - MOSFET switching circuit analysis
+  - DC-DC Converter (Buck and Boost converter topologies)
+  - PWM Motor Speed Control simulation
+  Each practical includes: animated circuit, scope waveform,
+  ripple factor calculation, regulation percentage, observation table.
+
+3.22  src/components/WaveformModal.tsx  (Size: 16.4 KB)
+---------------------------------------------------------
+WAVEFORM VIEWER - shows time-domain signal plots.
+
+  - Plots input/output voltage vs time on the same graph
+  - Configurable time scale
+  - Multiple signals overlaid with different colors
+  - Highlights HIGH/LOW signal regions with colored background bands
+  - Works for both digital (square) and analog (sine) signals
+
+3.23  src/components/Toast.tsx  (Size: 2 KB)
+---------------------------------------------
+NOTIFICATION SYSTEM - small pop-up messages that auto-dismiss.
+
+  Types: SUCCESS (green) | ERROR (red) | INFO (blue) | WARNING (yellow)
+  Each toast auto-dismisses after 3 seconds.
+  ToastContainer renders all active toasts simultaneously.
+
+3.24  src/components/AudioSynth.ts  (Size: 3.6 KB)
+----------------------------------------------------
+SOUND EFFECTS ENGINE using the browser's Web Audio API.
+No audio files - sounds are generated mathematically.
+
+  AudioSynthService class:
+  playToggleSound(stateOn):
+  - Switch ON:  rising bip (400Hz to 800Hz, 50ms duration)
+  - Switch OFF: falling bop (600Hz to 300Hz, 50ms duration)
+
+  playConnectSound():
+  - Plays C5 then E5 musical interval chime (100ms, triangle wave)
+  - Triggered when wire is successfully connected
+
+  setBuzzerState(nodeId, active):
+  - BUZZER receives HIGH: plays 440Hz sawtooth wave continuously
+  - BUZZER receives LOW: fades out the buzzer sound smoothly
+  - Multiple buzzers can play at the same time
+
+  setMuted(muted): Globally mutes/unmutes all sounds in the app.
+  Uses AudioContext, OscillatorNode, and GainNode from Web Audio API.
+
+3.25  src/components/examNotes/ExamNotesSidebar.tsx  (Size: 5.9 KB)
+--------------------------------------------------------------------
+LEFT NAVIGATION sidebar for the Exam Notes section.
+
+  Navigation tabs: Exam Notes | Practice | AI Tutor | Lab
+  Shows: Topics completed / total | Bookmarks count
+
+3.26  src/components/examNotes/ExamNotesHome.tsx  (Size: 17.5 KB)
+------------------------------------------------------------------
+DASHBOARD / HOME SCREEN for the exam notes module.
+
+  Shows:
+  - Subject cards: Digital Technique (22317) | Analog Electronics (22320)
+  - Unit-wise progress bars showing completion percentage
+  - Recently bookmarked topics for quick access
+  - Quick stats: topics completed, study time, quiz scores
+  - Progress ring showing overall completion percentage
+  Navigation: Subject -> Unit -> Chapter -> Topic (TopicViewer)
+
+3.27  src/components/examNotes/TopicViewer.tsx  (Size: 34.5 KB)
+----------------------------------------------------------------
+DETAILED TOPIC PAGE showing everything about one subject topic.
+
+  Sections on each topic page:
+   1. Concept Summary (theory in simple language)
+   2. Animated Diagram (concept animation using CSS/SVG)
+   3. Step-by-Step Examples (completely solved numericals)
+   4. Interactive Gate Sandbox (mini simulator within notes)
+   5. Truth Table (for gate-related topics)
+   6. Logic Families Chart (for comparison topics)
+   7. Memory Tricks and Mnemonics
+   8. Real-Life Examples (with icons)
+   9. Flashcard Deck (flip cards for revision)
+  10. Common Mistakes (wrong vs correct)
+  11. Important Exam Points (definitions, formulas, expected questions)
+  12. Quick Revision Bullet Points
+  13. Micro Quiz (4-option MCQ after studying)
+  14. Practice Problems with Interactive Step Solver
+
+  Student actions: Mark Completed | Bookmark | Add Note | Take Quiz
+  canvas-confetti fires on quiz pass celebration.
+
+3.28  src/components/examNotes/PracticeSection.tsx  (Size: 12.7 KB)
+--------------------------------------------------------------------
+PRACTICE QUESTION BANK with instant answer checking.
+
+  - Questions organized by subject and unit
+  - Filter by difficulty: Easy / Medium / Hard
+  - 4-option multiple choice format
+  - Immediate feedback with explanation for wrong answers
+  - Live score tracker: X correct out of Y attempted
+
+3.29  src/components/examNotes/AITutorBot.tsx  (Size: 38.2 KB)
+----------------------------------------------------------------
+AI CHATBOT for student help with electronics questions.
+
+  - Students type any electronics question in natural language
+  - Bot responds with explanations, formulas, examples
+  - Pre-built quick-question buttons for common topics
+  - Typing animation for realistic chat experience
+  - Math notation support in responses
+  - AI responses use API key from .env file (VITE_AI_API_KEY)
+
+3.30  src/components/examNotes/InteractiveStepSolver.tsx  (Size: 14.8 KB)
+--------------------------------------------------------------------------
+STEP-BY-STEP PROBLEM SOLVER for numerical problems.
+
+  - Shows problem statement
+  - Reveals steps ONE AT A TIME (click Next Step)
+  - Shows formula, substitution, and result at each step
+  - 'Show All Steps' button and 'Try Again' reset button
+
+3.31  src/components/examNotes/GateSandboxCard.tsx  (Size: 8.4 KB)
+--------------------------------------------------------------------
+MINI INTERACTIVE GATE embedded directly inside topic notes.
+
+  - Small SVG gate visual
+  - Toggle buttons for each input (A, B)
+  - Output updates instantly on toggle
+  - Truth table row highlights matching current input
+  Lets students see gate behavior without opening the full simulator.
+
+3.32  src/components/examNotes/LogicFamiliesChart.tsx  (Size: 8.6 KB)
+----------------------------------------------------------------------
+COMPARISON TABLE of digital logic families (TTL, CMOS, ECL, HTL, IIL).
+
+  Compares: Noise Margin (V), Power Dissipation (mW), Propagation Delay (ns)
+  Fan-In, Fan-Out, Supply Voltage, Max Clock Frequency
+  Displayed as sortable color-coded table.
+
+3.33  src/data/examNotesData.ts  (Size: 59 KB - largest data file)
+--------------------------------------------------------------------
+THE MASTER CONTENT DATABASE. Contains ALL exam notes content.
+
+  Structure overview:
+  EXAM_NOTES_DATA = Subject[]
+
+  Subject 1: Digital Technique (22317)
+    Unit I: Number Systems and Codes
+      Chapter 1.1: Number Systems
+        Topics: Binary, Octal, Hexadecimal, Decimal conversions
+      Chapter 1.2: Codes
+        Topics: BCD code, Gray code, Excess-3 code, ASCII
+    Unit II: Boolean Algebra and Logic Gates
+      Chapter 2.1: Boolean Algebra
+        Topics: Theorems, De Morgan's laws, SOP, POS, K-map simplification
+      Chapter 2.2: Logic Gates
+        Topics: AND, OR, NOT, NAND, NOR, XOR, XNOR
+    Unit III: Combinational Logic Circuits
+        Topics: Half/Full Adder, Encoders, Decoders, MUX, DEMUX
+    Unit IV: Sequential Logic Circuits
+        Topics: SR/D/JK/T Flip-Flops, Counters, Shift Registers
+    Unit V: Logic Families
+        Topics: TTL, CMOS, ECL specifications and comparison
+
+  Subject 2: Analog Electronics (22320)
+    Unit I: Diodes and Applications
+    Unit II: Transistor Biasing
+    Unit III: Amplifiers
+    Unit IV: Oscillators and Feedback Amplifiers
+    Unit V: Operational Amplifiers
+
+  Each topic entry (10 to 50 lines) contains ALL data defined in examNotes.ts types.
+
+3.34  src/data/practiceData.ts  (Size: 19.7 KB)
+-------------------------------------------------
+PRACTICE QUESTION BANK - multiple choice questions with answers.
+
+  Structure: PracticeQuestion[]
+  { id, subject, unit, difficulty, question, options[4], correctAnswer, explanation }
+
+  Covers all MSBTE topics:
+  - Number system conversions (decimal/binary/octal/hex)
+  - Boolean expression simplification
+  - Truth table identification
+  - Flip-flop state sequence analysis
+  - Amplifier gain and efficiency calculations
+  - Logic family parameter identification
+
+3.35  src/index.css  (Size: 8.3 KB)
+-------------------------------------
+GLOBAL STYLES + CSS ANIMATION DEFINITIONS.
+
+  CSS Custom Properties (Theme Variables):
+  --bg-primary, --bg-secondary, --text-primary, --accent-color, etc.
+  Defined for :root (dark mode) and [data-theme='light'].
+  Switching themes just changes these variables; all components update automatically.
+
+  Current Flow Animations (for Amplifier Lab circuit diagram):
+  @keyframes currentFlowForward
+    Dashed stroke animates FORWARD (conventional current + to -)
+    from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 }
+
+  @keyframes currentFlowReverse
+    Dashes animate REVERSE (electron flow - to +)
+    from { stroke-dashoffset: 0 } to { stroke-dashoffset: 60 }
+
+  @keyframes currentPulse
+    Glowing particle dots pulse and breathe
+    0%,100% { opacity: 0.7; r: 4px } | 50% { opacity: 1.0; r: 6px }
+
+  CSS Utility Classes:
+  .current-flow-path  -> Animated dashed current flow line on circuit diagram
+  .current-particle   -> Glowing dot moving along the current path
+  .ammeter-badge      -> Glowing HUD card for live current readout
+  .component-tooltip  -> Floating card shown on component hover
+
+3.36  vite.config.ts and tsconfig files
+----------------------------------------
+
+  vite.config.ts:
+  defineConfig({ plugins: [react()], build: { chunkSizeWarningLimit: 1600 } })
+  Enables React JSX + suppresses large bundle size warning (expected for content-heavy app).
+
+  tsconfig.json       -> Master TypeScript config (references app and node configs)
+  tsconfig.app.json   -> Config for application code in src/ folder
+  tsconfig.node.json  -> Config for vite.config.ts (Node.js context)

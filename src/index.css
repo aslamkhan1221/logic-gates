@@ -322,3 +322,49 @@ body,
   }
 }
 
+/* Animated Circuit Current Flow Keyframes */
+@keyframes currentFlowForward {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes currentFlowReverse {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 24;
+  }
+}
+
+@keyframes currentPulse {
+  0%, 100% {
+    opacity: 0.65;
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}
+
+.current-path-forward {
+  stroke-dasharray: 6 6;
+  animation: currentFlowForward 0.8s linear infinite;
+}
+
+.current-path-reverse {
+  stroke-dasharray: 6 6;
+  animation: currentFlowReverse 0.8s linear infinite;
+}
+
+.current-path-fast {
+  stroke-dasharray: 6 6;
+  animation: currentFlowForward 0.4s linear infinite;
+}
+
+
