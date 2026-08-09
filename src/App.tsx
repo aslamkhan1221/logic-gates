@@ -1053,7 +1053,24 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {(activeTab !== 'exam-notes' && activeTab !== 'simulator' && activeTab !== 'iot-simulator') && (
+          {activeTab === 'previous-papers' && (
+            <div style={{ flex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#0f172a' }}>
+              <iframe
+                src="https://econtent.msbte.edu.in/question_papers/"
+                title="MSBTE Previous Question Papers"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  flex: 1,
+                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+
+          {(activeTab !== 'exam-notes' && activeTab !== 'simulator' && activeTab !== 'iot-simulator' && activeTab !== 'previous-papers') && (
             <div style={{
               flex: 1,
               padding: '40px',
