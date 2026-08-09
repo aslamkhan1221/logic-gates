@@ -10,7 +10,7 @@ import {
   type WaveformPoint,
   type MsbteObservationRow,
 } from '../engine/AmplifierEngine';
-import { Activity, X, Play, Pause, BarChart2, FileText, Download, CheckCircle2, Cpu, HelpCircle, Zap, RefreshCw, Eye, Layers, ArrowRight, Gauge, Info } from 'lucide-react';
+import { Activity, X, Play, Pause, BarChart2, FileText, Download, CheckCircle2, Cpu, HelpCircle, Zap, RefreshCw, Layers, Info } from 'lucide-react';
 
 interface AmplifierLabModalProps {
   nodes: CircuitNode[];
@@ -86,7 +86,6 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
   const iBaseUa = Number(((iCollectorMa * 1000) / betaVal).toFixed(1));
   const iBiasMa = Number(((params.vcc - vBaseBias) / 47).toFixed(2));
   const vCeqVal = Math.max(0.2, params.vcc - (iCollectorMa / 1000) * params.rLoad - vEmitter).toFixed(2);
-  const iAcPeakMa = Number(((params.vinPeak * metrics.voltageGain) / Math.max(1, params.rLoad) * 1000).toFixed(1));
 
   // Active current observation point
   const currentObsRow = calculateMsbteObservationRow(

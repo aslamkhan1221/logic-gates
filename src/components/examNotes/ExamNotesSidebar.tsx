@@ -8,10 +8,11 @@ import {
   FileText,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Radio
 } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'simulator' | 'practice' | 'quiz' | 'exam-notes' | 'previous-papers' | 'settings';
+export type NavTab = 'dashboard' | 'simulator' | 'practice' | 'quiz' | 'exam-notes' | 'previous-papers' | 'settings' | 'iot-simulator';
 
 interface Props {
   activeTab: NavTab;
@@ -29,6 +30,7 @@ export const ExamNotesSidebar: React.FC<Props> = ({
   const menuItems: { id: NavTab; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { id: 'simulator', label: 'Simulator', icon: <Cpu size={18} /> },
+    { id: 'iot-simulator', label: 'IoT Simulator', icon: <Radio size={18} />, badge: 'LIVE' },
     { id: 'practice', label: 'Practice', icon: <PenTool size={18} /> },
     { id: 'quiz', label: 'Quiz', icon: <HelpCircle size={18} /> },
     { id: 'exam-notes', label: 'Exam Notes', icon: <BookOpen size={18} />, badge: '⭐ NEW' },

@@ -82,50 +82,50 @@ export const App: React.FC = () => {
   // ── Team data (defined inside component to avoid top-level constant) ─────────
   const TEAM_MEMBERS = [
     {
-      initials: 'RK', name: 'RANHER KARTIK', number: 1,
+      initials: 'RK', name: 'VARAD PANDE', number: 1,
       color: '#6366f1', shadow: 'rgba(99,102,241,0.5)',
       branch: 'Electronics & Telecommunication Engineering -3K',
-      role: 'Lead Developer & Circuit Engine Architect',
+      role: 'Lead Developer & Circuit Engine Architect,Frontend Developer & Component Designer,Hardware Integration & Preset Circuit Expert',
       skills: ['React / TypeScript', 'Digital Logic Design', 'Circuit Simulation', 'UI/UX'],
       description: 'Designed the core circuit simulation engine and led the overall architecture of the Logic Gate Simulator. Responsible for gate propagation, waveform rendering, and the oscilloscope panel.',
       emoji: '🔬',
     },
-    {
-      initials: 'N', name: 'NAVGHARE', number: 2,
-      color: '#0ea5e9', shadow: 'rgba(14,165,233,0.5)',
-      branch: 'Electronics & Telecommunication Engineering -3K',
-      role: 'Frontend Developer & Component Designer',
-      skills: ['Component Library', 'Canvas Rendering', 'CSS Animations', 'SVG Graphics'],
-      description: 'Built the interactive drag-and-drop canvas, component palette sidebar, and wire routing system. Created the visual design language and all interactive UI components.',
-      emoji: '🎨',
-    },
-    {
-      initials: 'W', name: 'WAGHMARE', number: 3,
-      color: '#10b981', shadow: 'rgba(16,185,129,0.5)',
-      branch: 'Electronics & Telecommunication Engineering',
-      role: 'Hardware Integration & Preset Circuit Expert',
-      skills: ['Analog Electronics', 'Power Electronics', 'Circuit Analysis', 'Testing & QA'],
-      description: 'Developed and validated 20+ preset circuit implementations including rectifiers, filters, amplifiers and timer circuits. Ensured simulation accuracy against real hardware behavior.',
-      emoji: '⚡',
-    },
-    {
-      initials: 'V', name: 'AARYA', number: 4,
-      color: '#f59e0b', shadow: 'rgba(245,158,11,0.5)',
-      branch: 'Electronics & Telecommunication Engineering',
-      role: 'DSO/CRO Oscilloscope & Waveform Developer',
-      skills: ['Signal Processing', 'Waveform Analysis', 'DSO Emulation', 'Data Visualization'],
-      description: 'Implemented the full DSO/CRO oscilloscope front panel with dual-channel waveform display, CH1 input vs CH2 output comparison, FFT spectrum, and CSV export functionality.',
-      emoji: '📡',
-    },
-    {
-      initials: 'VP', name: 'Prof. Vijay Patil', number: 0,
-      color: '#f59e0b', shadow: 'rgba(245,158,11,0.6)',
-      branch: 'Department of Electronics Engineering',
-      role: 'Faculty Guide & Project Mentor',
-      skills: ['Power Electronics', 'Analog Circuits', 'Project Management', 'Academic Research'],
-      description: 'Provided expert guidance, technical direction, and academic supervision throughout the project. Helped define the curriculum-aligned scope and ensured the simulator meets MSBTE K-scheme educational standards.',
-      emoji: '🏅',
-    },
+    // {
+    //   initials: 'N', name: 'NAVGHARE', number: 2,
+    //   color: '#0ea5e9', shadow: 'rgba(14,165,233,0.5)',
+    //   branch: 'Electronics & Telecommunication Engineering -3K',
+    //   role: 'Frontend Developer & Component Designer',
+    //   skills: ['Component Library', 'Canvas Rendering', 'CSS Animations', 'SVG Graphics', 'Digital Logic design, 'Waceform Generator''],
+    //   description: 'Built the interactive drag-and-drop canvas, component palette sidebar, and wire routing system. Created the visual design language and all interactive UI components.',
+    //   emoji: '🎨',
+    // },
+    // {
+    //   initials: 'W', name: 'WAGHMARE', number: 3,
+    //   color: '#10b981', shadow: 'rgba(16,185,129,0.5)',
+    //   branch: 'Electronics & Telecommunication Engineering',
+    //   role: 'Hardware Integration & Preset Circuit Expert',
+    //   skills: ['Analog Electronics', 'Power Electronics', 'Circuit Analysis', 'Testing & QA'],
+    //   description: 'Developed and validated 20+ preset circuit implementations including rectifiers, filters, amplifiers and timer circuits. Ensured simulation accuracy against real hardware behavior.',
+    //   emoji: '⚡',
+    // },
+    // {
+    //   initials: 'V', name: 'AARYA', number: 4,
+    //   color: '#f59e0b', shadow: 'rgba(245,158,11,0.5)',
+    //   branch: 'Electronics & Telecommunication Engineering',
+    //   role: 'DSO/CRO Oscilloscope & Waveform Developer',
+    //   skills: ['Signal Processing', 'Waveform Analysis', 'DSO Emulation', 'Data Visualization'],
+    //   description: 'Implemented the full DSO/CRO oscilloscope front panel with dual-channel waveform display, CH1 input vs CH2 output comparison, FFT spectrum, and CSV export functionality.',
+    //   emoji: '📡',
+    // },
+    // {
+    //   initials: 'VP', name: 'Prof. Vijay Patil', number: 0,
+    //   color: '#f59e0b', shadow: 'rgba(245,158,11,0.6)',
+    //   branch: 'Department of Electronics Engineering',
+    //   role: 'Faculty Guide & Project Mentor',
+    //   skills: ['Power Electronics', 'Analog Circuits', 'Project Management', 'Academic Research'],
+    //   description: 'Provided expert guidance, technical direction, and academic supervision throughout the project. Helped define the curriculum-aligned scope and ensured the simulator meets MSBTE K-scheme educational standards.',
+    //   emoji: '🏅',
+    // },
   ];
 
   // Simulation controls
@@ -1036,7 +1036,24 @@ export const App: React.FC = () => {
             </>
           )}
 
-          {(activeTab !== 'exam-notes' && activeTab !== 'simulator') && (
+          {activeTab === 'iot-simulator' && (
+            <div style={{ flex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#0f172a' }}>
+              <iframe
+                src="https://app.cirkitdesigner.com/project"
+                title="IoT Circuit Designer & Simulator"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  flex: 1,
+                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+
+          {(activeTab !== 'exam-notes' && activeTab !== 'simulator' && activeTab !== 'iot-simulator') && (
             <div style={{
               flex: 1,
               padding: '40px',
