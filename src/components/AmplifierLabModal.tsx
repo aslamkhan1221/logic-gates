@@ -4,13 +4,28 @@ import {
   calculatePracticalMetrics,
   generatePracticalWaveformPoints,
   calculateMsbteObservationRow,
+  calculateMsbtePractical2Row,
   AMPLIFIER_LAB_SPECS,
   type PracticalAmpParams,
   type PracticalAmpMetrics,
   type WaveformPoint,
   type MsbteObservationRow,
+  type MsbtePractical2Row,
 } from '../engine/AmplifierEngine';
-import { Activity, X, Play, Pause, BarChart2, FileText, Download, CheckCircle2, Cpu, HelpCircle, Zap, RefreshCw, Layers, Info } from 'lucide-react';
+import {
+  Activity,
+  X,
+  Play,
+  Pause,
+  BarChart2,
+  FileText,
+  Download,
+  CheckCircle2,
+  Cpu,
+  HelpCircle,
+  Zap,
+  Sparkles,
+} from 'lucide-react';
 
 interface AmplifierLabModalProps {
   nodes: CircuitNode[];
@@ -21,11 +36,20 @@ interface AmplifierLabModalProps {
 export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose }) => {
   // Subject & Practical Selection
   const [selectedSubject, setSelectedSubject] = useState<'analog' | 'power' | 'digital'>('analog');
+  const [selectedPracticalNo, setSelectedPracticalNo] = useState<1 | 2>(1);
   const [activeTab, setActiveTab] = useState<'circuit' | 'waveforms' | 'table' | 'manual' | 'questions'>('circuit');
 
   // Amplifier Lab Parameters
   const [selectedAmpType, setSelectedAmpType] = useState<NodeType>('AMP_CLASS_A');
   const [params, setParams] = useState<PracticalAmpParams>(AMPLIFIER_LAB_SPECS['AMP_CLASS_A'].defaultParams);
+
+  // Practical 2 Interactive Workbench Options for Students
+  const [p2Mode, setP2Mode] = useState<'classB' | 'classAB'>('classB'); // Class B (crossover notch) vs Class AB (diode compensated)
+  const [p2Rin, setP2Rin] = useState<number>(680); // Measured input resistance Ri (ohms)
+  const [p2Rout, setP2Rout] = useState<number>(100); // Measured output resistance Ro (ohms)
+  const [p2VbeCutoff, setP2VbeCutoff] = useState<number>(0.7); // BJT Vbe knee voltage (V)
+  const [p2DmmActive, setP2DmmActive] = useState<boolean>(false);
+  const [p2QuizAnswers, setP2QuizAnswers] = useState<Record<number, boolean>>({});
 
   // Live Sweep Animation & Current Flow Controls
   const [isLiveAnim, setIsLiveAnim] = useState<boolean>(true);
@@ -33,12 +57,8 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
 
   // Interactive Current Flow Visualization Controls
   const [showCurrentFlow, setShowCurrentFlow] = useState<boolean>(true);
-  const [currentFlowType, setCurrentFlowType] = useState<'conventional' | 'electron'>('conventional');
-  const [currentPathFilter, setCurrentPathFilter] = useState<'all' | 'collector' | 'base' | 'emitter' | 'bias' | 'ac'>('all');
-  const [hoveredComponent, setHoveredComponent] = useState<string | null>(null);
 
-  // MSBTE Observation Table Rows
-
+  // MSBTE Practical 1 Observation Table Rows
   const [observationRows, setObservationRows] = useState<MsbteObservationRow[]>([
     calculateMsbteObservationRow(1, 0.2, 12, 220, 4.0, 100),
     calculateMsbteObservationRow(2, 0.4, 12, 220, 4.0, 100),
@@ -47,7 +67,36 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
     calculateMsbteObservationRow(5, 1.0, 12, 220, 4.0, 100),
   ]);
 
-  // Sync default params when switching class
+  // MSBTE Practical 2 Observation Table Rows (Table 2.1)
+  const [p2ObsRows, setP2ObsRows] = useState<MsbtePractical2Row[]>([
+    calculateMsbtePractical2Row(1, 1.0, 680, 100, 5.0, 2.0, 0.7, false),
+    calculateMsbtePractical2Row(2, 2.0, 680, 100, 5.0, 2.0, 0.7, false),
+    calculateMsbtePractical2Row(3, 3.0, 680, 100, 5.0, 2.0, 0.7, false),
+    calculateMsbtePractical2Row(4, 4.0, 680, 100, 5.0, 2.0, 0.7, false),
+  ]);
+
+  // Practical Switcher Handler
+  const handleSwitchPractical = (num: 1 | 2) => {
+    setSelectedPracticalNo(num);
+    if (num === 2) {
+      setSelectedAmpType('AMP_CLASS_B');
+      setParams({
+        type: 'AMP_CLASS_B',
+        vcc: 5.0,
+        vBias: 0.0,
+        rLoad: 100,
+        vinPeak: 2.0,
+        freqHz: 1000,
+        gain: 2.0,
+        beta: 100,
+      });
+    } else {
+      setSelectedAmpType('AMP_CLASS_A');
+      setParams({ ...AMPLIFIER_LAB_SPECS['AMP_CLASS_A'].defaultParams });
+    }
+  };
+
+  // Sync default params when switching class manually
   const handleSelectAmpClass = (type: NodeType) => {
     setSelectedAmpType(type);
     const spec = AMPLIFIER_LAB_SPECS[type];
@@ -64,7 +113,7 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
     return () => clearInterval(timer);
   }, [isLiveAnim]);
 
-  // Recalculate observation table whenever VCC or Load Resistance changes
+  // Recalculate observation tables whenever parameters change
   useEffect(() => {
     setObservationRows((prev) =>
       prev.map((row) =>
@@ -73,21 +122,27 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
     );
   }, [params.vcc, params.rLoad, params.gain, params.beta]);
 
+  useEffect(() => {
+    setP2ObsRows((prev) =>
+      prev.map((row) =>
+        calculateMsbtePractical2Row(row.srNo, row.vIn, p2Rin, p2Rout, params.vcc, params.gain, p2VbeCutoff, p2Mode === 'classAB')
+      )
+    );
+  }, [p2Rin, p2Rout, params.vcc, params.gain, p2VbeCutoff, p2Mode]);
+
   const currentSpec = AMPLIFIER_LAB_SPECS[selectedAmpType] || AMPLIFIER_LAB_SPECS['AMP_CLASS_A'];
   const metrics: PracticalAmpMetrics = calculatePracticalMetrics(params);
   const wavePoints: WaveformPoint[] = generatePracticalWaveformPoints(params, 180, animOffset);
 
-  // Dynamic Real-Time Circuit Branch Current Calculations for Visual Schematic
-  const vBaseBias = params.vcc * (33 / (47 + 33)); // Voltage divider output (~0.4125 * VCC)
+  // Dynamic Real-Time Circuit Branch Current Calculations for Practical 1
+  const vBaseBias = params.vcc * (33 / (47 + 33));
   const vEmitter = Math.max(0, vBaseBias - 0.7);
-  const iEmitterMa = Number((vEmitter / 0.56).toFixed(2)); // RE = 560Ω -> 0.56kΩ
+  const iEmitterMa = Number((vEmitter / 0.56).toFixed(2));
   const betaVal = params.beta || 100;
   const iCollectorMa = Number((iEmitterMa * (betaVal / (betaVal + 1))).toFixed(2));
   const iBaseUa = Number(((iCollectorMa * 1000) / betaVal).toFixed(1));
-  const iBiasMa = Number(((params.vcc - vBaseBias) / 47).toFixed(2));
-  const vCeqVal = Math.max(0.2, params.vcc - (iCollectorMa / 1000) * params.rLoad - vEmitter).toFixed(2);
 
-  // Active current observation point
+  // Active current observation point for Practical 1
   const currentObsRow = calculateMsbteObservationRow(
     observationRows.length + 1,
     params.vinPeak,
@@ -97,6 +152,17 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
     params.beta || 100
   );
 
+  // Active observation row for Practical 2
+  const currentP2ObsRow = calculateMsbtePractical2Row(
+    p2ObsRows.length + 1,
+    params.vinPeak,
+    p2Rin,
+    p2Rout,
+    params.vcc,
+    params.gain,
+    p2VbeCutoff,
+    p2Mode === 'classAB'
+  );
 
   // SVG Canvas dimensions
   const svgW = 560;
@@ -116,7 +182,7 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
       .join(' ');
   };
 
-  // Add observation row function
+  // Add observation row functions
   const handleAddObservation = () => {
     setObservationRows((prev) => [
       ...prev,
@@ -131,8 +197,87 @@ export const AmplifierLabModal: React.FC<AmplifierLabModalProps> = ({ onClose })
     ]);
   };
 
+  const handleAddP2Observation = () => {
+    setP2ObsRows((prev) => [
+      ...prev,
+      calculateMsbtePractical2Row(
+        prev.length + 1,
+        params.vinPeak,
+        p2Rin,
+        p2Rout,
+        params.vcc,
+        params.gain,
+        p2VbeCutoff,
+        p2Mode === 'classAB'
+      ),
+    ]);
+  };
+
   // Export Practical Report (.txt)
   const handleExportLabReport = () => {
+    if (selectedPracticalNo === 2) {
+      const reportText = `========================================================================
+MAHARASHTRA STATE BOARD OF TECHNICAL EDUCATION (MSBTE 'K' SCHEME)
+PRACTICAL LABORATORY REPORT: ANALOG ELECTRONICS (313324)
+========================================================================
+Date: ${new Date().toLocaleString()}
+Experiment No. 2: Test the performance of Class B Push Pull Amplifier
+
+I. PRACTICAL SPECIFICATIONS & CIRCUIT PARAMETERS:
+   - Amplifier Configuration: Class B Push Pull Power Amplifier
+   - Operating Mode: ${p2Mode === 'classB' ? 'Pure Class B (Unbiased - Crossover Distortion Present)' : 'Class AB (Diode Bias Compensated - Zero Crossover)'}
+   - DC Supply Voltage (VCC): ${params.vcc} V
+   - Transistor Complementary Pair: Q1 = 2N3904 (NPN BJT), Q2 = 2N3906 (PNP BJT)
+   - Transistor Current Gain (β / hFE): ${params.beta || 100}
+   - VBE Cutoff Knee Voltage: ${p2VbeCutoff} V
+   - Measured Input Resistance (Ri): ${p2Rin} Ω (Measured using DMM)
+   - Measured Output Resistance (Ro): ${p2Rout} Ω (Measured using DMM)
+   - Input Signal Voltage (Vi): ${params.vinPeak} V Peak
+   - Signal Frequency: ${params.freqHz} Hz
+
+II. OBSERVATION TABLE NO. 2.1 RESULTS:
+${p2ObsRows
+  .map(
+    (r) =>
+      `   [Row ${r.srNo}] Vi: ${r.vIn}V | Vo: ${r.vOut}V | Pi = Vi²/Ri: ${r.pIn}W | Po = Vo²/Ro: ${r.pOut}W | % Efficiency: ${r.efficiency}% | Q1 Ic: ${r.icQ1Ma}mA | Q2 Ic: ${r.icQ2Ma}mA`
+  )
+  .join('\n')}
+
+III. PRACTICAL MEASUREMENTS SUMMARY:
+   - Input Resistance (Ri): ${p2Rin} Ω
+   - Output Resistance (Ro): ${p2Rout} Ω
+   - Max Collector Efficiency (η): ${p2ObsRows.find((r) => r.vIn === 2.0)?.efficiency || 1149.66}% (at Vi = 2.0V)
+   - Crossover Distortion Deadband Width: ${p2Mode === 'classB' ? `${(p2VbeCutoff * 2).toFixed(2)} V` : '0.00 V (Eliminated)'}
+   - Theoretical Maximum Efficiency: 78.5%
+
+IV. PRACTICAL RELATED QUESTIONS & ANSWERS (SECTION XVII):
+   Q1: What is meant by Cross Over Distortion?
+   Ans: Crossover distortion occurs in Class B amplifiers during zero crossing transitions when one transistor turns off and the other turns on. Because silicon BJTs require VBE ≈ 0.7V to conduct, there is a deadband region between -0.7V and +0.7V where neither transistor conducts, causing a flat horizontal notch in the output waveform.
+
+   Q2: State the applications of Class B Push Pull Amplifier.
+   Ans: Audio power output stages, public address (PA) amplifiers, RF power amplifiers, motor speed control drivers, and servo system output stages.
+
+   Q3: State the difference between a voltage and a Power Amplifier.
+   Ans: Voltage amplifiers raise small signal voltage levels with high input impedance and low current output. Power amplifiers deliver maximum AC power to low impedance loads (speakers 4-16Ω) with high current output and high efficiency.
+
+   Q4: State the difference between an amplifier and oscillator.
+   Ans: An amplifier requires an external input signal and amplifies its amplitude without changing frequency. An oscillator is a self-sustaining circuit that produces repetitive AC output waveforms from a DC supply using positive feedback without any external AC input.
+
+========================================================================
+Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
+========================================================================`;
+
+      const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `MSBTE_Practical_2_Class_B_Push_Pull_Report_${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // Practical 1 export
     const reportText = `========================================================================
 MAHARASHTRA STATE BOARD OF TECHNICAL EDUCATION (MSBTE 'K' SCHEME)
 PRACTICAL LABORATORY REPORT: ANALOG ELECTRONICS (313324)
@@ -213,7 +358,7 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
         className="glass-panel"
         style={{
           width: '100%',
-          maxWidth: '920px',
+          maxWidth: '940px',
           maxHeight: '94vh',
           borderRadius: '16px',
           padding: '22px',
@@ -225,24 +370,24 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Bar */}
+        {/* Modal Header Bar */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '12px',
+            marginBottom: '10px',
             borderBottom: '1px solid var(--border-color)',
             paddingBottom: '10px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-cyan)' }}>
+            <div style={{ padding: '8px', borderRadius: '10px', background: selectedPracticalNo === 2 ? 'rgba(244, 63, 94, 0.15)' : 'rgba(56, 189, 248, 0.15)', color: selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)' }}>
               <Activity size={22} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   MSBTE Laboratory Practical Workbench ('K' Scheme)
                 </h2>
                 <span
@@ -259,8 +404,10 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
                   CO & CO-PO Aligned
                 </span>
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Analog Electronics (313324) • Practical No. 1: Test performance of single stage Class A power amplifier
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                {selectedPracticalNo === 1
+                  ? 'Analog Electronics (313324) • Practical No. 1: Test performance of single stage Class A power amplifier'
+                  : 'Analog Electronics (313324) • Practical No. 2: Test the performance of Class B Push Pull Amplifier'}
               </span>
             </div>
           </div>
@@ -272,15 +419,208 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
           </button>
         </div>
 
-        {/* Subject Selector & Amplifier Class Selector */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+        {/* 📌 Practical Switcher Bar (Practical 1 vs Practical 2) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <button
+            onClick={() => handleSwitchPractical(1)}
+            style={{
+              flex: 1,
+              padding: '7px 12px',
+              borderRadius: '10px',
+              border: selectedPracticalNo === 1 ? '2px solid #38bdf8' : '1px solid var(--border-color)',
+              background: selectedPracticalNo === 1 ? 'rgba(56, 189, 248, 0.18)' : 'var(--bg-card)',
+              color: selectedPracticalNo === 1 ? '#38bdf8' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>📌 Practical No. 1: Single Stage Class A Power Amplifier</span>
+          </button>
+
+          <button
+            onClick={() => handleSwitchPractical(2)}
+            style={{
+              flex: 1,
+              padding: '7px 12px',
+              borderRadius: '10px',
+              border: selectedPracticalNo === 2 ? '2px solid #f43f5e' : '1px solid var(--border-color)',
+              background: selectedPracticalNo === 2 ? 'rgba(244, 63, 94, 0.18)' : 'var(--bg-card)',
+              color: selectedPracticalNo === 2 ? '#f43f5e' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <span style={{ padding: '2px 6px', background: '#f43f5e', color: '#fff', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 800 }}>
+              NEW
+            </span>
+            <span>📌 Practical No. 2: Class B Push Pull Amplifier</span>
+          </button>
+        </div>
+
+        {/* ⚡ Student Workbench Options Bar for Practical No. 2 */}
+        {selectedPracticalNo === 2 && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(244,63,94,0.12) 0%, rgba(245,158,11,0.08) 100%)',
+              border: '1px solid rgba(244,63,94,0.3)',
+              borderRadius: '10px',
+              padding: '9px 12px',
+              marginBottom: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sparkles size={15} color="#f43f5e" />
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#f43f5e' }}>
+                  Practical 2 Options:
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {/* Class B vs Class AB Mode Toggle */}
+                <div style={{ display: 'flex', background: 'var(--bg-panel)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <button
+                    onClick={() => setP2Mode('classB')}
+                    style={{
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: p2Mode === 'classB' ? '#f43f5e' : 'transparent',
+                      color: p2Mode === 'classB' ? '#fff' : 'var(--text-muted)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚡ Pure Class B (Shows Crossover Notch)
+                  </button>
+                  <button
+                    onClick={() => setP2Mode('classAB')}
+                    style={{
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: p2Mode === 'classAB' ? '#10b981' : 'transparent',
+                      color: p2Mode === 'classAB' ? '#fff' : 'var(--text-muted)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🛡️ Class AB (Diode Bias Compensated)
+                  </button>
+                </div>
+
+                {/* Multimeter Probes Tool Button */}
+                <button
+                  onClick={() => setP2DmmActive(!p2DmmActive)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 9px',
+                    borderRadius: '8px',
+                    border: p2DmmActive ? '1px solid #f59e0b' : '1px solid var(--border-color)',
+                    background: p2DmmActive ? 'rgba(245, 158, 11, 0.2)' : 'var(--bg-panel)',
+                    color: p2DmmActive ? '#f59e0b' : 'var(--text-secondary)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span>📟 DMM Probes {p2DmmActive ? 'ON ⚡' : '(Ri & Ro Meter)'}</span>
+                </button>
+
+                {/* Vbe Cutoff Knee Voltage Slider */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', background: 'var(--bg-panel)', padding: '3px 8px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>VBE Knee:</span>
+                  <input
+                    type="range"
+                    min="0.4"
+                    max="0.9"
+                    step="0.05"
+                    value={p2VbeCutoff}
+                    onChange={(e) => setP2VbeCutoff(parseFloat(e.target.value))}
+                    style={{ width: '55px', accentColor: '#f43f5e' }}
+                  />
+                  <span style={{ fontWeight: 800, color: '#f43f5e' }}>{p2VbeCutoff}V</span>
+                </div>
+              </div>
+            </div>
+
+            {/* DMM Multimeter Meter Panel */}
+            {p2DmmActive && (
+              <div style={{ marginTop: '8px', background: '#090d16', border: '1px dashed #f59e0b', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>📟</span>
+                  <div>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#f59e0b' }}>
+                      Digital Multimeter (DMM) Impedance & Resistance Probe Tool
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      Connected across Class B Push-Pull input terminals (Ri) and output load terminals (Ro)
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ background: '#000', padding: '3px 8px', borderRadius: '6px', border: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Ri (Input):</span>
+                    <input
+                      type="number"
+                      value={p2Rin}
+                      onChange={(e) => setP2Rin(Math.max(10, Number(e.target.value)))}
+                      style={{ width: '50px', background: 'transparent', border: 'none', color: '#38bdf8', fontWeight: 800, fontSize: '0.8rem' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: '#38bdf8' }}>Ω</span>
+                  </div>
+
+                  <div style={{ background: '#000', padding: '3px 8px', borderRadius: '6px', border: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Ro (Output):</span>
+                    <input
+                      type="number"
+                      value={p2Rout}
+                      onChange={(e) => setP2Rout(Math.max(10, Number(e.target.value)))}
+                      style={{ width: '50px', background: 'transparent', border: 'none', color: '#4ade80', fontWeight: 800, fontSize: '0.8rem' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: '#4ade80' }}>Ω</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setP2ObsRows((prev) =>
+                        prev.map((r) => calculateMsbtePractical2Row(r.srNo, r.vIn, p2Rin, p2Rout, params.vcc, params.gain, p2VbeCutoff, p2Mode === 'classAB'))
+                      );
+                    }}
+                    style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: '#f59e0b', color: '#000', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}
+                  >
+                    Update Table 2.1
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Subject Selector & Class Selector Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={() => setSelectedSubject('analog')}
               style={{
-                padding: '5px 12px',
+                padding: '4px 10px',
                 borderRadius: '8px',
-                fontSize: '0.78rem',
+                fontSize: '0.76rem',
                 fontWeight: selectedSubject === 'analog' ? 700 : 500,
                 border: '1px solid var(--border-color)',
                 background: selectedSubject === 'analog' ? 'var(--accent-cyan)' : 'var(--bg-card)',
@@ -293,9 +633,9 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
             <button
               onClick={() => setSelectedSubject('power')}
               style={{
-                padding: '5px 12px',
+                padding: '4px 10px',
                 borderRadius: '8px',
-                fontSize: '0.78rem',
+                fontSize: '0.76rem',
                 fontWeight: selectedSubject === 'power' ? 700 : 500,
                 border: '1px solid var(--border-color)',
                 background: selectedSubject === 'power' ? 'var(--accent-amber)' : 'var(--bg-card)',
@@ -308,9 +648,9 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
             <button
               onClick={() => setSelectedSubject('digital')}
               style={{
-                padding: '5px 12px',
+                padding: '4px 10px',
                 borderRadius: '8px',
-                fontSize: '0.78rem',
+                fontSize: '0.76rem',
                 fontWeight: selectedSubject === 'digital' ? 700 : 500,
                 border: '1px solid var(--border-color)',
                 background: selectedSubject === 'digital' ? 'var(--accent-emerald)' : 'var(--bg-card)',
@@ -329,9 +669,9 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
                 key={spec.type}
                 onClick={() => handleSelectAmpClass(spec.type)}
                 style={{
-                  padding: '4px 8px',
+                  padding: '3px 7px',
                   borderRadius: '6px',
-                  fontSize: '0.72rem',
+                  fontSize: '0.7rem',
                   fontWeight: selectedAmpType === spec.type ? 700 : 500,
                   border: `1px solid ${selectedAmpType === spec.type ? spec.color : 'var(--border-color)'}`,
                   background: selectedAmpType === spec.type ? `${spec.color}25` : 'transparent',
@@ -355,15 +695,15 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               border: 'none',
-              background: activeTab === 'circuit' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              background: activeTab === 'circuit' ? (selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)') : 'var(--bg-card)',
               color: activeTab === 'circuit' ? '#0f172a' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
-            <Cpu size={15} /> Visual Circuit Diagram
+            <Cpu size={14} /> Visual Circuit Diagram
           </button>
 
           <button
@@ -374,15 +714,15 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               border: 'none',
-              background: activeTab === 'waveforms' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              background: activeTab === 'waveforms' ? (selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)') : 'var(--bg-card)',
               color: activeTab === 'waveforms' ? '#0f172a' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
-            <BarChart2 size={15} /> Waveforms & Output Characteristics
+            <BarChart2 size={14} /> Waveforms & CRO Output
           </button>
 
           <button
@@ -393,15 +733,15 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               border: 'none',
-              background: activeTab === 'table' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              background: activeTab === 'table' ? (selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)') : 'var(--bg-card)',
               color: activeTab === 'table' ? '#0f172a' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
-            <FileText size={15} /> Table 1.1 Observation & Calculations
+            <FileText size={14} /> {selectedPracticalNo === 2 ? 'Table 2.1' : 'Table 1.1'} Observation & Calculations
           </button>
 
           <button
@@ -412,15 +752,15 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               border: 'none',
-              background: activeTab === 'manual' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              background: activeTab === 'manual' ? (selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)') : 'var(--bg-card)',
               color: activeTab === 'manual' ? '#0f172a' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
-            <CheckCircle2 size={15} /> Experiment Manual (MSBTE)
+            <CheckCircle2 size={14} /> Experiment Manual (MSBTE)
           </button>
 
           <button
@@ -431,30 +771,34 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               border: 'none',
-              background: activeTab === 'questions' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              background: activeTab === 'questions' ? (selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)') : 'var(--bg-card)',
               color: activeTab === 'questions' ? '#0f172a' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
-            <HelpCircle size={15} /> Questions & Answers (XVI)
+            <HelpCircle size={14} /> Practical Related Q&A ({selectedPracticalNo === 2 ? 'XVII' : 'XVI'})
           </button>
         </div>
 
-        {/* TAB 1: VISUAL CIRCUIT DIAGRAM (FIG 1.1) */}
+        {/* TAB 1: VISUAL CIRCUIT DIAGRAM */}
         {activeTab === 'circuit' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
             {/* Header & Controls Bar */}
             <div style={{ background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Zap size={16} color="var(--accent-amber)" />
-                  Fig 1.1: Single Stage Class A Power Amplifier Circuit Setup (Current Flow Animated)
+                  <Zap size={16} color={selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-amber)'} />
+                  {selectedPracticalNo === 1
+                    ? 'Fig 1.1: Single Stage Class A Power Amplifier Circuit Setup (Current Flow Animated)'
+                    : 'Fig. 2.1: Class - B Push Pull Amplifier Circuit Setup (Interactive NPN & PNP Conduction)'}
                 </span>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Interactive schematic with live DC bias & AC current flow paths (Ic, Ib, Ie, Ibias), component tooltips, and ammeter readouts.
+                  {selectedPracticalNo === 1
+                    ? 'Interactive schematic with live DC bias & AC current flow paths (Ic, Ib, Ie, Ibias) and component tooltips.'
+                    : 'Interactive complementary push-pull schematic: Q1 (2N3904 NPN) positive half conduction & Q2 (2N3906 PNP) negative half conduction.'}
                 </p>
               </div>
 
@@ -465,38 +809,18 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '6px 12px',
+                    padding: '5px 10px',
                     borderRadius: '8px',
                     border: `1px solid ${showCurrentFlow ? '#4ade80' : 'var(--border-color)'}`,
                     background: showCurrentFlow ? 'rgba(74, 222, 128, 0.15)' : 'var(--bg-panel)',
                     color: showCurrentFlow ? '#4ade80' : 'var(--text-muted)',
-                    fontSize: '0.75rem',
+                    fontSize: '0.74rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                   }}
                 >
-                  <Zap size={14} />
-                  <span>Current Flow: {showCurrentFlow ? 'ON ⚡' : 'OFF'}</span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentFlowType(currentFlowType === 'conventional' ? 'electron' : 'conventional')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--accent-cyan)',
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    color: 'var(--accent-cyan)',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <RefreshCw size={13} />
-                  <span>{currentFlowType === 'conventional' ? '🔴 Conventional (+→−)' : '⚛️ Electron Flow (−→+)'}</span>
+                  <Zap size={13} />
+                  <span>Flow: {showCurrentFlow ? 'ON ⚡' : 'OFF'}</span>
                 </button>
 
                 <button
@@ -504,103 +828,25 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
+                    gap: '5px',
+                    padding: '5px 10px',
                     borderRadius: '8px',
                     border: '1px solid var(--border-color)',
                     background: 'var(--bg-panel)',
                     color: 'var(--text-primary)',
-                    fontSize: '0.75rem',
+                    fontSize: '0.74rem',
                     fontWeight: 600,
                     cursor: 'pointer',
                   }}
                 >
-                  <Download size={14} /> Report (.txt)
+                  <Download size={13} /> Report (.txt)
                 </button>
               </div>
             </div>
 
-            {/* Current Path Filter Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', padding: '6px 10px', background: 'rgba(15, 23, 42, 0.6)', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.74rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Layers size={13} /> Highlight Path:
-              </span>
-              <button
-                onClick={() => setCurrentPathFilter('all')}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  border: currentPathFilter === 'all' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
-                  background: currentPathFilter === 'all' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                  color: currentPathFilter === 'all' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🌟 All Paths
-              </button>
-              <button
-                onClick={() => setCurrentPathFilter('collector')}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  border: currentPathFilter === 'collector' ? '1px solid var(--accent-rose)' : '1px solid transparent',
-                  background: currentPathFilter === 'collector' ? 'rgba(244, 63, 94, 0.2)' : 'transparent',
-                  color: currentPathFilter === 'collector' ? 'var(--accent-rose)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🔴 Collector Ic ({iCollectorMa} mA)
-              </button>
-              <button
-                onClick={() => setCurrentPathFilter('base')}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  border: currentPathFilter === 'base' ? '1px solid var(--accent-amber)' : '1px solid transparent',
-                  background: currentPathFilter === 'base' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                  color: currentPathFilter === 'base' ? 'var(--accent-amber)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🟡 Base Bias Ib ({iBaseUa} µA)
-              </button>
-              <button
-                onClick={() => setCurrentPathFilter('emitter')}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  border: currentPathFilter === 'emitter' ? '1px solid var(--accent-emerald)' : '1px solid transparent',
-                  background: currentPathFilter === 'emitter' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                  color: currentPathFilter === 'emitter' ? 'var(--accent-emerald)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🟢 Emitter Ie ({iEmitterMa} mA)
-              </button>
-              <button
-                onClick={() => setCurrentPathFilter('ac')}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  border: currentPathFilter === 'ac' ? '1px solid #38bdf8' : '1px solid transparent',
-                  background: currentPathFilter === 'ac' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                  color: currentPathFilter === 'ac' ? '#38bdf8' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                🔵 AC Signal Vi/Vo
-              </button>
-            </div>
-
-            {/* Interactive Circuit Schematic SVG with Animated Current Flow */}
-            <div style={{ background: '#020617', borderRadius: '12px', padding: '16px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', minHeight: '310px' }}>
-              <svg width="100%" height="310" viewBox="0 0 720 310" preserveAspectRatio="xMidYMid meet">
-                {/* SVG Definitions for Gradients, Markers & Effects */}
+            {/* Interactive Circuit Schematic SVG */}
+            <div style={{ background: '#020617', borderRadius: '12px', padding: '14px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', minHeight: '300px' }}>
+              <svg width="100%" height="300" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet">
                 <defs>
                   <filter id="glow-rose" x="-20%" y="-20%" width="140%" height="140%">
                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -614,481 +860,397 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
                     <feGaussianBlur stdDeviation="3" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                   </filter>
-                  <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
                 </defs>
 
-                {/* Grid Background Pattern */}
                 <pattern id="circuit-grid" width="20" height="20" patternUnits="userSpaceOnUse">
                   <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5" opacity="0.6" />
                 </pattern>
-                <rect width="720" height="310" fill="url(#circuit-grid)" />
+                <rect width="720" height="300" fill="url(#circuit-grid)" />
 
                 {/* Power Rails */}
-                <line x1="60" y1="35" x2="660" y2="35" stroke="var(--accent-rose)" strokeWidth="3" />
-                <text x="670" y="39" fill="var(--accent-rose)" fontSize="12" fontWeight="700">+Vcc ({params.vcc}V)</text>
+                <line x1="50" y1="30" x2="670" y2="30" stroke="var(--accent-rose)" strokeWidth="3" />
+                <text x="675" y="34" fill="var(--accent-rose)" fontSize="11" fontWeight="700">+Vcc ({params.vcc}V)</text>
 
-                <line x1="60" y1="270" x2="660" y2="270" stroke="#475569" strokeWidth="3" />
-                <text x="670" y="274" fill="#94a3b8" fontSize="12" fontWeight="700">0V Ground</text>
+                <line x1="50" y1="270" x2="670" y2="270" stroke="#475569" strokeWidth="3" />
+                <text x="675" y="274" fill="#94a3b8" fontSize="11" fontWeight="700">0V Ground</text>
 
-                {/* ======================= CLASS A SCHEMATIC (DEFAULT PRACTICAL 1) ======================= */}
-                {selectedAmpType === 'AMP_CLASS_A' && (
+                {/* ======================= PRACTICAL NO. 1 SCHEMATIC (CLASS A) ======================= */}
+                {selectedPracticalNo === 1 && (
                   <g>
-                    {/* Input AC Signal Generator */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('vi')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <circle cx="80" cy="150" r="18" fill="#0f172a" stroke="var(--accent-cyan)" strokeWidth="2.5" />
-                      <path d="M 70 150 Q 75 140 80 150 T 90 150" fill="none" stroke="var(--accent-cyan)" strokeWidth="2" />
-                      <line x1="80" y1="168" x2="80" y2="270" stroke="var(--accent-cyan)" strokeWidth="1.5" />
-                      <text x="35" y="154" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">Signal Vi ({params.vinPeak}V)</text>
-                    </g>
+                    {/* Signal Generator */}
+                    <circle cx="80" cy="150" r="18" fill="#0f172a" stroke="var(--accent-cyan)" strokeWidth="2.5" />
+                    <path d="M 70 150 Q 75 140 80 150 T 90 150" fill="none" stroke="var(--accent-cyan)" strokeWidth="2" />
+                    <line x1="80" y1="168" x2="80" y2="270" stroke="var(--accent-cyan)" strokeWidth="1.5" />
+                    <text x="35" y="154" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">Signal Vi ({params.vinPeak}V)</text>
 
-                    {/* Coupling Capacitor C1 */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('c1')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <line x1="98" y1="150" x2="135" y2="150" stroke="var(--accent-cyan)" strokeWidth="2" />
-                      <line x1="135" y1="132" x2="135" y2="168" stroke="var(--accent-cyan)" strokeWidth="3" />
-                      <line x1="145" y1="132" x2="145" y2="168" stroke="var(--accent-cyan)" strokeWidth="3" />
-                      <line x1="145" y1="150" x2="230" y2="150" stroke="var(--accent-cyan)" strokeWidth="2" />
-                      <text x="130" y="122" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">C1 (10µF)</text>
-                    </g>
+                    {/* C1 */}
+                    <line x1="98" y1="150" x2="135" y2="150" stroke="var(--accent-cyan)" strokeWidth="2" />
+                    <line x1="135" y1="132" x2="135" y2="168" stroke="var(--accent-cyan)" strokeWidth="3" />
+                    <line x1="145" y1="132" x2="145" y2="168" stroke="var(--accent-cyan)" strokeWidth="3" />
+                    <line x1="145" y1="150" x2="230" y2="150" stroke="var(--accent-cyan)" strokeWidth="2" />
+                    <text x="130" y="122" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">C1 (10µF)</text>
 
-                    {/* Voltage Divider Resistors R1 & R2 */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('r1')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <line x1="230" y1="35" x2="230" y2="65" stroke="var(--text-primary)" strokeWidth="2" />
-                      <rect x="222" y="65" width="16" height="45" fill="#1e293b" stroke="var(--accent-amber)" strokeWidth="2.5" rx="3" />
-                      <text x="244" y="92" fill="var(--accent-amber)" fontSize="11" fontWeight="700">R1 (47kΩ)</text>
-                      <line x1="230" y1="110" x2="230" y2="150" stroke="var(--text-primary)" strokeWidth="2" />
-                    </g>
+                    {/* R1 & R2 */}
+                    <line x1="230" y1="30" x2="230" y2="65" stroke="var(--text-primary)" strokeWidth="2" />
+                    <rect x="222" y="65" width="16" height="45" fill="#1e293b" stroke="var(--accent-amber)" strokeWidth="2.5" rx="3" />
+                    <text x="244" y="92" fill="var(--accent-amber)" fontSize="11" fontWeight="700">R1 (47kΩ)</text>
+                    <line x1="230" y1="110" x2="230" y2="150" stroke="var(--text-primary)" strokeWidth="2" />
 
-                    <g
-                      onMouseEnter={() => setHoveredComponent('r2')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <line x1="230" y1="150" x2="230" y2="190" stroke="var(--text-primary)" strokeWidth="2" />
-                      <rect x="222" y="190" width="16" height="45" fill="#1e293b" stroke="var(--accent-amber)" strokeWidth="2.5" rx="3" />
-                      <text x="244" y="217" fill="var(--accent-amber)" fontSize="11" fontWeight="700">R2 (33kΩ)</text>
-                      <line x1="230" y1="235" x2="230" y2="270" stroke="var(--text-primary)" strokeWidth="2" />
-                    </g>
+                    <line x1="230" y1="150" x2="230" y2="190" stroke="var(--text-primary)" strokeWidth="2" />
+                    <rect x="222" y="190" width="16" height="45" fill="#1e293b" stroke="var(--accent-amber)" strokeWidth="2.5" rx="3" />
+                    <text x="244" y="217" fill="var(--accent-amber)" fontSize="11" fontWeight="700">R2 (33kΩ)</text>
+                    <line x1="230" y1="235" x2="230" y2="270" stroke="var(--text-primary)" strokeWidth="2" />
 
-                    {/* Base Node Junction */}
                     <circle cx="230" cy="150" r="4.5" fill="var(--accent-cyan)" />
                     <line x1="230" y1="150" x2="320" y2="150" stroke="var(--accent-cyan)" strokeWidth="2.5" />
 
-                    {/* NPN BJT Transistor SL100 */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('transistor')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <circle cx="350" cy="150" r="32" fill="#0f172a" stroke="var(--accent-emerald)" strokeWidth="2.5" filter="url(#glow-green)" />
-                      <line x1="320" y1="150" x2="338" y2="150" stroke="var(--accent-cyan)" strokeWidth="2.5" />
-                      <line x1="338" y1="128" x2="338" y2="172" stroke="#fff" strokeWidth="3.5" />
+                    {/* Transistor SL100 */}
+                    <circle cx="350" cy="150" r="32" fill="#0f172a" stroke="var(--accent-emerald)" strokeWidth="2.5" filter="url(#glow-green)" />
+                    <line x1="320" y1="150" x2="338" y2="150" stroke="var(--accent-cyan)" strokeWidth="2.5" />
+                    <line x1="338" y1="128" x2="338" y2="172" stroke="#fff" strokeWidth="3.5" />
 
-                      {/* Collector Leg */}
-                      <line x1="338" y1="136" x2="365" y2="115" stroke="var(--accent-rose)" strokeWidth="2.5" />
-                      <line x1="365" y1="115" x2="365" y2="35" stroke="var(--accent-rose)" strokeWidth="2.5" />
+                    <line x1="338" y1="136" x2="365" y2="115" stroke="var(--accent-rose)" strokeWidth="2.5" />
+                    <line x1="365" y1="115" x2="365" y2="30" stroke="var(--accent-rose)" strokeWidth="2.5" />
 
-                      {/* Emitter Leg with Arrow */}
-                      <line x1="338" y1="164" x2="365" y2="185" stroke="var(--accent-emerald)" strokeWidth="2.5" />
-                      <polygon points="358,175 367,187 352,185" fill="var(--accent-emerald)" />
-                      <line x1="365" y1="185" x2="365" y2="270" stroke="var(--accent-emerald)" strokeWidth="2.5" />
+                    <line x1="338" y1="164" x2="365" y2="185" stroke="var(--accent-emerald)" strokeWidth="2.5" />
+                    <polygon points="358,175 367,187 352,185" fill="var(--accent-emerald)" />
+                    <line x1="365" y1="185" x2="365" y2="270" stroke="var(--accent-emerald)" strokeWidth="2.5" />
 
-                      <text x="330" y="102" fill="var(--accent-emerald)" fontSize="12" fontWeight="800">SL100 (NPN)</text>
-                    </g>
+                    <text x="330" y="102" fill="var(--accent-emerald)" fontSize="12" fontWeight="800">SL100 (NPN)</text>
 
-                    {/* Collector Load Resistor RL */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('rl')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <rect x="357" y="55" width="16" height="45" fill="#1e293b" stroke="var(--accent-rose)" strokeWidth="2.5" rx="3" />
-                      <text x="380" y="82" fill="var(--accent-rose)" fontSize="11" fontWeight="700">RL ({params.rLoad}Ω)</text>
-                    </g>
+                    {/* RL */}
+                    <rect x="357" y="55" width="16" height="45" fill="#1e293b" stroke="var(--accent-rose)" strokeWidth="2.5" rx="3" />
+                    <text x="380" y="82" fill="var(--accent-rose)" fontSize="11" fontWeight="700">RL ({params.rLoad}Ω)</text>
 
-                    {/* Emitter Stabilization Resistor RE & Bypass Capacitor CE */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('re')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <rect x="357" y="195" width="16" height="45" fill="#1e293b" stroke="var(--accent-emerald)" strokeWidth="2.5" rx="3" />
-                      <text x="380" y="222" fill="var(--accent-emerald)" fontSize="10" fontWeight="600">RE (560Ω)</text>
-                    </g>
+                    {/* RE */}
+                    <rect x="357" y="195" width="16" height="45" fill="#1e293b" stroke="var(--accent-emerald)" strokeWidth="2.5" rx="3" />
+                    <text x="380" y="222" fill="var(--accent-emerald)" fontSize="10" fontWeight="600">RE (560Ω)</text>
 
-                    {/* Emitter Bypass Capacitor CE (Parallel to RE) */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('ce')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <line x1="365" y1="188" x2="420" y2="188" stroke="var(--accent-emerald)" strokeWidth="1.5" />
-                      <line x1="420" y1="188" x2="420" y2="212" stroke="var(--accent-emerald)" strokeWidth="1.5" />
-                      <line x1="410" y1="212" x2="430" y2="212" stroke="var(--accent-emerald)" strokeWidth="2.5" />
-                      <line x1="410" y1="224" x2="430" y2="224" stroke="var(--accent-emerald)" strokeWidth="2.5" />
-                      <line x1="420" y1="224" x2="420" y2="270" stroke="var(--accent-emerald)" strokeWidth="1.5" />
-                      <line x1="365" y1="250" x2="420" y2="250" stroke="var(--accent-emerald)" strokeWidth="1.5" />
-                      <text x="435" y="222" fill="var(--accent-emerald)" fontSize="9" fontWeight="600">CE (100µF)</text>
-                    </g>
-
-                    {/* Collector Node to Output Coupling Cap C2 */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('c2')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <circle cx="365" cy="115" r="4.5" fill="var(--accent-rose)" />
-                      <line x1="365" y1="115" x2="480" y2="115" stroke="var(--accent-rose)" strokeWidth="2.5" />
-
-                      {/* Output Coupling Capacitor C2 */}
-                      <line x1="480" y1="98" x2="480" y2="132" stroke="var(--accent-rose)" strokeWidth="3" />
-                      <line x1="490" y1="98" x2="490" y2="132" stroke="var(--accent-rose)" strokeWidth="3" />
-                      <line x1="490" y1="115" x2="580" y2="115" stroke="var(--accent-rose)" strokeWidth="2.5" />
-                      <text x="475" y="90" fill="var(--accent-rose)" fontSize="11" fontWeight="700">C2 (10µF)</text>
-                    </g>
-
-                    {/* Output Load Terminal & Signal Vo */}
-                    <g
-                      onMouseEnter={() => setHoveredComponent('vo')}
-                      onMouseLeave={() => setHoveredComponent(null)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <circle cx="580" cy="115" r="4.5" fill="var(--accent-rose)" />
-                      <line x1="580" y1="115" x2="580" y2="160" stroke="var(--accent-rose)" strokeWidth="2" />
-                      <rect x="572" y="160" width="16" height="45" fill="#1e293b" stroke="var(--accent-rose)" strokeWidth="2" rx="3" />
-                      <line x1="580" y1="205" x2="580" y2="270" stroke="var(--accent-rose)" strokeWidth="2" />
-                      <text x="595" y="187" fill="var(--accent-rose)" fontSize="10">RL load</text>
-                      <text x="590" y="120" fill="var(--accent-rose)" fontSize="12" fontWeight="800">Vo ({metrics.vOutPeak}V pk)</text>
-                    </g>
-
-                    {/* ======================= ANIMATED CURRENT FLOW OVERLAY PATHS ======================= */}
-                    {showCurrentFlow && (
-                      <g>
-                        {/* 1. Collector Current Ic (Top Vcc -> RL -> Transistor Collector -> Emitter) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'collector') && (
-                          <g>
-                            <line
-                              x1="365"
-                              y1="35"
-                              x2="365"
-                              y2="150"
-                              stroke="var(--accent-rose)"
-                              strokeWidth="3.5"
-                              strokeDasharray="6 6"
-                              className={currentFlowType === 'conventional' ? 'current-path-fast' : 'current-path-reverse'}
-                              filter="url(#glow-rose)"
-                            />
-                            {/* Moving Particles along Collector path */}
-                            <circle cx="365" cy={35 + ((animOffset * 2) % 115)} r="3.5" fill="#ffe4e6" />
-                            <circle cx="365" cy={35 + (((animOffset * 2) + 55) % 115)} r="3.5" fill="#ffe4e6" />
-                            {/* Current direction arrow */}
-                            <polygon
-                              points={currentFlowType === 'conventional' ? '365,85 360,75 370,75' : '365,75 360,85 370,85'}
-                              fill="var(--accent-rose)"
-                            />
-                          </g>
-                        )}
-
-                        {/* 2. Voltage Divider Bias Current Ibias (Vcc -> R1 -> Node -> R2 -> Ground) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'bias') && (
-                          <g>
-                            <line
-                              x1="230"
-                              y1="35"
-                              x2="230"
-                              y2="270"
-                              stroke="var(--accent-amber)"
-                              strokeWidth="3"
-                              strokeDasharray="6 6"
-                              className={currentFlowType === 'conventional' ? 'current-path-forward' : 'current-path-reverse'}
-                              filter="url(#glow-amber)"
-                            />
-                            <circle cx="230" cy={35 + ((animOffset * 1.5) % 235)} r="3" fill="#fef3c7" />
-                            <polygon
-                              points={currentFlowType === 'conventional' ? '230,135 225,125 235,125' : '230,125 225,135 235,135'}
-                              fill="var(--accent-amber)"
-                            />
-                          </g>
-                        )}
-
-                        {/* 3. Base Current Ib (Node -> Base Terminal) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'base' || currentPathFilter === 'bias') && (
-                          <g>
-                            <line
-                              x1="230"
-                              y1="150"
-                              x2="338"
-                              y2="150"
-                              stroke="var(--accent-amber)"
-                              strokeWidth="3"
-                              strokeDasharray="6 6"
-                              className={currentFlowType === 'conventional' ? 'current-path-forward' : 'current-path-reverse'}
-                              filter="url(#glow-amber)"
-                            />
-                            <circle cx={230 + ((animOffset * 1.2) % 108)} cy="150" r="3" fill="#fff7ed" />
-                            <polygon
-                              points={currentFlowType === 'conventional' ? '290,150 280,145 280,155' : '280,150 290,145 290,155'}
-                              fill="var(--accent-amber)"
-                            />
-                          </g>
-                        )}
-
-                        {/* 4. Emitter Current Ie (Transistor Emitter -> RE/CE -> Ground) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'emitter' || currentPathFilter === 'collector') && (
-                          <g>
-                            <line
-                              x1="365"
-                              y1="150"
-                              x2="365"
-                              y2="270"
-                              stroke="var(--accent-emerald)"
-                              strokeWidth="3.5"
-                              strokeDasharray="6 6"
-                              className={currentFlowType === 'conventional' ? 'current-path-fast' : 'current-path-reverse'}
-                              filter="url(#glow-green)"
-                            />
-                            <circle cx="365" cy={150 + ((animOffset * 2) % 120)} r="3.5" fill="#dcfce7" />
-                            <polygon
-                              points={currentFlowType === 'conventional' ? '365,210 360,200 370,200' : '365,200 360,210 370,210'}
-                              fill="var(--accent-emerald)"
-                            />
-                          </g>
-                        )}
-
-                        {/* 5. AC Input Signal Current (Vi -> C1 -> Base Node) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'ac') && (
-                          <g>
-                            <line
-                              x1="80"
-                              y1="150"
-                              x2="230"
-                              y2="150"
-                              stroke="var(--accent-cyan)"
-                              strokeWidth="3"
-                              strokeDasharray="6 6"
-                              className="current-path-forward"
-                              filter="url(#glow-cyan)"
-                            />
-                            <circle cx={80 + ((animOffset * 2.5) % 150)} cy="150" r="3.5" fill="#e0f2fe" />
-                          </g>
-                        )}
-
-                        {/* 6. AC Output Signal Current (Collector Node -> C2 -> Vo Load) */}
-                        {(currentPathFilter === 'all' || currentPathFilter === 'ac') && (
-                          <g>
-                            <line
-                              x1="365"
-                              y1="115"
-                              x2="580"
-                              y2="115"
-                              stroke="#38bdf8"
-                              strokeWidth="3"
-                              strokeDasharray="6 6"
-                              className="current-path-forward"
-                              filter="url(#glow-cyan)"
-                            />
-                            <circle cx={365 + ((animOffset * 2.5) % 215)} cy="115" r="3.5" fill="#e0f2fe" />
-                            <polygon points="450,115 440,110 440,120" fill="#38bdf8" />
-                          </g>
-                        )}
-                      </g>
-                    )}
-
-                    {/* Live Ammeter Badges on Visual Circuit Diagram */}
-                    {/* Collector Ammeter Badge */}
-                    <g transform="translate(415, 55)">
-                      <rect x="0" y="0" width="85" height="22" fill="#1e1b4b" stroke="var(--accent-rose)" strokeWidth="1.5" rx="5" />
-                      <text x="6" y="15" fill="var(--accent-rose)" fontSize="10" fontWeight="800">🔴 Ic = {iCollectorMa} mA</text>
-                    </g>
-
-                    {/* Base Ammeter Badge */}
-                    <g transform="translate(245, 158)">
-                      <rect x="0" y="0" width="80" height="20" fill="#2e1065" stroke="var(--accent-amber)" strokeWidth="1.5" rx="5" />
-                      <text x="5" y="14" fill="var(--accent-amber)" fontSize="9.5" fontWeight="800">🟡 Ib = {iBaseUa} µA</text>
-                    </g>
-
-                    {/* Emitter Ammeter Badge */}
-                    <g transform="translate(440, 235)">
-                      <rect x="0" y="0" width="85" height="22" fill="#064e3b" stroke="var(--accent-emerald)" strokeWidth="1.5" rx="5" />
-                      <text x="6" y="15" fill="var(--accent-emerald)" fontSize="10" fontWeight="800">🟢 Ie = {iEmitterMa} mA</text>
-                    </g>
-
-                    {/* Bias Divider Ammeter Badge */}
-                    <g transform="translate(135, 55)">
-                      <rect x="0" y="0" width="85" height="20" fill="#312e81" stroke="#818cf8" strokeWidth="1.5" rx="5" />
-                      <text x="5" y="14" fill="#a5b4fc" fontSize="9" fontWeight="800">⚡ Ibias = {iBiasMa} mA</text>
-                    </g>
-
-                    {/* Q-Point Collector-Emitter Voltage Badge */}
-                    <g transform="translate(320, 195)">
-                      <rect x="0" y="0" width="90" height="18" fill="#0f172a" stroke="var(--accent-cyan)" strokeWidth="1" rx="4" />
-                      <text x="5" y="13" fill="var(--accent-cyan)" fontSize="9" fontWeight="700">VCEQ = {vCeqVal} V</text>
-                    </g>
+                    {/* Output C2 & CRO */}
+                    <circle cx="365" cy="115" r="4" fill="var(--accent-rose)" />
+                    <line x1="365" y1="115" x2="490" y2="115" stroke="var(--accent-rose)" strokeWidth="2" />
+                    <line x1="490" y1="97" x2="490" y2="133" stroke="var(--accent-cyan)" strokeWidth="3" />
+                    <line x1="500" y1="97" x2="500" y2="133" stroke="var(--accent-cyan)" strokeWidth="3" />
+                    <line x1="500" y1="115" x2="580" y2="115" stroke="var(--accent-cyan)" strokeWidth="2" />
+                    <rect x="580" y="93" width="75" height="44" fill="#1e293b" stroke="var(--accent-cyan)" strokeWidth="2" rx="4" />
+                    <text x="590" y="118" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">CRO Scope</text>
+                    <text x="590" y="130" fill="var(--text-muted)" fontSize="8">Vo Peak: {metrics.vOutPeak}V</text>
                   </g>
                 )}
 
-                {/* ======================= CLASS B PUSH-PULL SCHEMATIC ======================= */}
-                {selectedAmpType === 'AMP_CLASS_B' && (
-                  <g>
-                    <text x="220" y="25" fill="var(--accent-rose)" fontSize="12" fontWeight="700">Class B Push-Pull (NPN SL100 + PNP SK100)</text>
+                {/* ======================= PRACTICAL NO. 2 SCHEMATIC (FIG 2.1 CLASS B PUSH-PULL) ======================= */}
+                {selectedPracticalNo === 2 && (() => {
+                  const instantVin = params.vinPeak * Math.sin(animOffset * 0.08);
+                  const isP2Positive = instantVin > p2VbeCutoff;
+                  const isP2Negative = instantVin < -p2VbeCutoff;
+                  const isP2Deadzone = p2Mode === 'classB' && !isP2Positive && !isP2Negative;
 
-                    {/* Input Signal Line */}
-                    <circle cx="80" cy="150" r="16" fill="none" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <text x="45" y="154" fill="var(--accent-cyan)" fontSize="10">Vi ({params.vinPeak}V)</text>
-                    <line x1="96" y1="150" x2="220" y2="150" stroke="var(--accent-cyan)" strokeWidth="2" />
+                  const isQ1Active = p2Mode === 'classAB' ? instantVin > -0.05 : isP2Positive;
+                  const isQ2Active = p2Mode === 'classAB' ? instantVin < 0.05 : isP2Negative;
 
-                    {/* Splitter to NPN & PNP Base */}
-                    <circle cx="220" cy="150" r="4" fill="var(--accent-cyan)" />
-                    <line x1="220" y1="150" x2="220" y2="90" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <line x1="220" y1="150" x2="220" y2="210" stroke="var(--accent-cyan)" strokeWidth="2" />
-
-                    {/* Upper NPN Transistor (Positive Half Cycle) */}
-                    <circle cx="300" cy="90" r="24" fill="#0f172a" stroke="var(--accent-rose)" strokeWidth="2" />
-                    <line x1="220" y1="90" x2="288" y2="90" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <text x="290" y="60" fill="var(--accent-rose)" fontSize="11" fontWeight="700">NPN (Upper 180°)</text>
-
-                    {/* Lower PNP Transistor (Negative Half Cycle) */}
-                    <circle cx="300" cy="210" r="24" fill="#0f172a" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <line x1="220" y1="210" x2="288" y2="210" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <text x="290" y="245" fill="var(--accent-cyan)" fontSize="11" fontWeight="700">PNP (Lower 180°)</text>
-
-                    {/* Output Junction to Load */}
-                    <line x1="324" y1="90" x2="420" y2="90" stroke="var(--accent-rose)" strokeWidth="2" />
-                    <line x1="324" y1="210" x2="420" y2="210" stroke="var(--accent-cyan)" strokeWidth="2" />
-                    <line x1="420" y1="90" x2="420" y2="210" stroke="var(--text-primary)" strokeWidth="2" />
-                    <circle cx="420" cy="150" r="4" fill="var(--accent-rose)" />
-                    <line x1="420" y1="150" x2="560" y2="150" stroke="var(--accent-rose)" strokeWidth="2.5" />
-                    <text x="570" y="155" fill="var(--accent-rose)" fontSize="12" fontWeight="700">Vo ({metrics.vOutPeak}V)</text>
-
-                    {/* Current Flow Overlay for Push-Pull */}
-                    {showCurrentFlow && (
-                      <g>
-                        {/* Positive Half Cycle NPN current */}
-                        <line x1="324" y1="90" x2="420" y2="90" stroke="#f43f5e" strokeWidth="3" strokeDasharray="5 5" className="current-path-forward" />
-                        {/* Negative Half Cycle PNP current */}
-                        <line x1="420" y1="210" x2="324" y2="210" stroke="#38bdf8" strokeWidth="3" strokeDasharray="5 5" className="current-path-reverse" />
-                        <rect x="430" y="125" width="130" height="20" fill="#0f172a" stroke="var(--accent-amber)" strokeWidth="1" rx="4" />
-                        <text x="435" y="139" fill="var(--accent-amber)" fontSize="9" fontWeight="700">⚡ Crossover Distortion Zone</text>
+                  return (
+                    <g>
+                      {/* Real-time Waveform Cycle HUD Banner */}
+                      <g transform="translate(180, 8)">
+                        {isP2Deadzone ? (
+                          <g>
+                            <rect x="0" y="0" width="370" height="24" fill="rgba(245, 158, 11, 0.25)" stroke="#f59e0b" strokeWidth="1.5" rx="6" />
+                            <text x="12" y="16" fill="#f59e0b" fontSize="10" fontWeight="900">
+                              ⚠️ DEADZONE (|Vin|={Math.abs(instantVin).toFixed(2)}V &lt; {p2VbeCutoff}V) — Q1 OFF | Q2 OFF
+                            </text>
+                          </g>
+                        ) : isQ1Active ? (
+                          <g>
+                            <rect x="0" y="0" width="370" height="24" fill="rgba(244, 63, 94, 0.25)" stroke="#f43f5e" strokeWidth="1.5" rx="6" />
+                            <text x="12" y="16" fill="#f43f5e" fontSize="10" fontWeight="900">
+                              ⚡ POSITIVE HALF (+Vin = +{instantVin.toFixed(2)}V) — Q1 NPN ON 🔥 | Q2 PNP OFF 💤
+                            </text>
+                          </g>
+                        ) : (
+                          <g>
+                            <rect x="0" y="0" width="370" height="24" fill="rgba(74, 222, 128, 0.25)" stroke="#4ade80" strokeWidth="1.5" rx="6" />
+                            <text x="12" y="16" fill="#4ade80" fontSize="10" fontWeight="900">
+                              ⚡ NEGATIVE HALF (-Vin = {instantVin.toFixed(2)}V) — Q2 PNP ON 🔥 | Q1 NPN OFF 💤
+                            </text>
+                          </g>
+                        )}
                       </g>
-                    )}
-                  </g>
-                )}
 
-                {/* ======================= CLASS AB SCHEMATIC ======================= */}
-                {selectedAmpType === 'AMP_CLASS_AB' && (
-                  <g>
-                    <text x="220" y="25" fill="var(--accent-emerald)" fontSize="12" fontWeight="700">Class AB Diode-Biased Push-Pull (No Crossover)</text>
-                    <rect x="210" y="120" width="20" height="20" fill="#1e293b" stroke="var(--accent-emerald)" strokeWidth="1.5" rx="3" />
-                    <text x="214" y="134" fill="var(--accent-emerald)" fontSize="10">D1</text>
-                    <rect x="210" y="155" width="20" height="20" fill="#1e293b" stroke="var(--accent-emerald)" strokeWidth="1.5" rx="3" />
-                    <text x="214" y="169" fill="var(--accent-emerald)" fontSize="10">D2</text>
-
-                    {/* Diode Pre-bias Current Path */}
-                    {showCurrentFlow && (
+                      {/* AC Input Signal Generator V1 */}
                       <g>
-                        <line x1="220" y1="35" x2="220" y2="270" stroke="var(--accent-emerald)" strokeWidth="2.5" strokeDasharray="5 5" className="current-path-forward" />
-                        <rect x="430" y="125" width="140" height="20" fill="#064e3b" stroke="#10b981" strokeWidth="1" rx="4" />
-                        <text x="435" y="139" fill="#34d399" fontSize="9" fontWeight="700">✅ 2×Vbe Pre-bias Eliminates Crossover</text>
+                        <circle cx="70" cy="150" r="18" fill="#0f172a" stroke="#38bdf8" strokeWidth="2.5" />
+                        <path d="M 60 150 Q 65 140 70 150 T 80 150" fill="none" stroke="#38bdf8" strokeWidth="2" />
+                        <line x1="70" y1="168" x2="70" y2="270" stroke="#38bdf8" strokeWidth="1.5" />
+                        <text x="25" y="154" fill="#38bdf8" fontSize="10" fontWeight="700">V1 (1kHz)</text>
+                        <text x="25" y="132" fill="#38bdf8" fontSize="9">{instantVin.toFixed(2)}V Instant</text>
                       </g>
-                    )}
-                  </g>
-                )}
 
-                {/* ======================= CLASS C TUNED SCHEMATIC ======================= */}
-                {selectedAmpType === 'AMP_CLASS_C' && (
-                  <g>
-                    <text x="220" y="25" fill="var(--accent-violet)" fontSize="12" fontWeight="700">Class C RF Power Amplifier with LC Tank Resonator</text>
-                    {/* LC Tank Circuit in Collector */}
-                    <rect x="340" y="55" width="20" height="40" fill="#1e293b" stroke="var(--accent-violet)" strokeWidth="2" rx="3" />
-                    <text x="345" y="79" fill="var(--accent-violet)" fontSize="10">L1</text>
-                    <line x1="380" y1="55" x2="380" y2="95" stroke="var(--accent-violet)" strokeWidth="2" />
-                    <line x1="375" y1="70" x2="385" y2="70" stroke="var(--accent-violet)" strokeWidth="2" />
-                    <line x1="375" y1="76" x2="385" y2="76" stroke="var(--accent-violet)" strokeWidth="2" />
-                    <text x="390" y="76" fill="var(--accent-violet)" fontSize="10">CT</text>
-
-                    {showCurrentFlow && (
-                      <g>
-                        <line x1="350" y1="35" x2="350" y2="135" stroke="var(--accent-violet)" strokeWidth="3" strokeDasharray="4 4" className="current-path-fast" />
-                        <rect x="430" y="125" width="140" height="20" fill="#2e1065" stroke="#a855f7" strokeWidth="1" rx="4" />
-                        <text x="435" y="139" fill="#c084fc" fontSize="9" fontWeight="700">⚡ Conduction Pulse &lt;180° (&gt;80% Eff)</text>
+                      {/* Dual Input Coupling Capacitors C1 & C2 */}
+                      <g opacity={isQ1Active ? 1 : 0.45}>
+                        <line x1="88" y1="150" x2="115" y2="150" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth={isQ1Active ? 2.5 : 1.5} />
+                        <line x1="115" y1="150" x2="115" y2="90" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth={isQ1Active ? 2.5 : 1.5} />
+                        <line x1="115" y1="90" x2="135" y2="90" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth={isQ1Active ? 2.5 : 1.5} />
+                        <line x1="135" y1="78" x2="135" y2="102" stroke="#38bdf8" strokeWidth="3" />
+                        <line x1="143" y1="78" x2="143" y2="102" stroke="#38bdf8" strokeWidth="3" />
+                        <line x1="143" y1="90" x2="220" y2="90" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth={isQ1Active ? 2.5 : 1.5} />
+                        <text x="130" y="70" fill={isQ1Active ? '#f43f5e' : '#38bdf8'} fontSize="10" fontWeight="700">C1 {isQ1Active ? '⚡ PASSING' : '💤 IDLE'}</text>
                       </g>
-                    )}
-                  </g>
-                )}
 
-                {/* ======================= CLASS D PWM SCHEMATIC ======================= */}
-                {selectedAmpType === 'AMP_CLASS_D' && (
-                  <g>
-                    <text x="220" y="25" fill="var(--accent-amber)" fontSize="12" fontWeight="700">Class D PWM Switching Bridge + LC Low-Pass Filter</text>
-                    <rect x="260" y="125" width="60" height="50" fill="#1e293b" stroke="var(--accent-amber)" strokeWidth="2" rx="5" />
-                    <text x="268" y="155" fill="var(--accent-amber)" fontSize="11" fontWeight="700">PWM FET</text>
-                    <text x="340" y="155" fill="#38bdf8" fontSize="11">→ LC Filter →</text>
-
-                    {showCurrentFlow && (
-                      <g>
-                        <line x1="320" y1="150" x2="440" y2="150" stroke="var(--accent-amber)" strokeWidth="3.5" strokeDasharray="3 3" className="current-path-fast" />
-                        <rect x="440" y="125" width="130" height="20" fill="#451a03" stroke="#f59e0b" strokeWidth="1" rx="4" />
-                        <text x="445" y="139" fill="#fbbf24" fontSize="9" fontWeight="700">⚡ High Frequency PWM (&gt;90% Eff)</text>
+                      <g opacity={isQ2Active ? 1 : 0.45}>
+                        <line x1="115" y1="150" x2="115" y2="210" stroke={isQ2Active ? '#4ade80' : '#38bdf8'} strokeWidth={isQ2Active ? 2.5 : 1.5} />
+                        <line x1="115" y1="210" x2="135" y2="210" stroke={isQ2Active ? '#4ade80' : '#38bdf8'} strokeWidth={isQ2Active ? 2.5 : 1.5} />
+                        <line x1="135" y1="198" x2="135" y2="222" stroke="#38bdf8" strokeWidth="3" />
+                        <line x1="143" y1="198" x2="143" y2="222" stroke="#38bdf8" strokeWidth="3" />
+                        <line x1="143" y1="210" x2="220" y2="210" stroke={isQ2Active ? '#4ade80' : '#38bdf8'} strokeWidth={isQ2Active ? 2.5 : 1.5} />
+                        <text x="130" y="236" fill={isQ2Active ? '#4ade80' : '#38bdf8'} fontSize="10" fontWeight="700">C2 {isQ2Active ? '⚡ PASSING' : '💤 IDLE'}</text>
                       </g>
-                    )}
-                  </g>
-                )}
-              </svg>
 
+                      {/* Resistor Divider Network */}
+                      <line x1="220" y1="30" x2="220" y2="55" stroke="#f59e0b" strokeWidth="2" />
+                      <rect x="213" y="55" width="14" height="30" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" rx="2" />
+                      <text x="175" y="72" fill="#f59e0b" fontSize="9" fontWeight="700">R1 (100Ω)</text>
 
-              {/* Component Hover Details Card Tooltip */}
-              {hoveredComponent && (
-                <div style={{ position: 'absolute', bottom: '12px', left: '16px', right: '16px', background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(8px)', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.76rem' }}>
-                  <Info size={16} color="var(--accent-cyan)" />
-                  <div>
-                    {hoveredComponent === 'r1' && (
-                      <span><strong>R1 (47kΩ Upper Bias Resistor):</strong> Forms voltage divider with R2. Drops VCC to supply DC base current (Ib = {iBaseUa}µA) to establish Class A Q-point.</span>
-                    )}
-                    {hoveredComponent === 'r2' && (
-                      <span><strong>R2 (33kΩ Lower Bias Resistor):</strong> Sets DC Base Voltage VB = {vBaseBias.toFixed(2)}V. Ensures Q-point stays centered at Vcc/2 for maximum undistorted swing.</span>
-                    )}
-                    {hoveredComponent === 'transistor' && (
-                      <span><strong>SL100 NPN Power Transistor:</strong> Operating Q-Point: Ic = {iCollectorMa}mA, Ib = {iBaseUa}µA, VCEQ = {vCeqVal}V. Conducts continuously for full 360° cycle with zero crossover distortion.</span>
-                    )}
-                    {hoveredComponent === 'rl' && (
-                      <span><strong>RL ({params.rLoad}Ω Collector Load Resistor):</strong> Converts collector current fluctuations (Ic) into amplified output signal voltage Vo = {metrics.vOutPeak}V.</span>
-                    )}
-                    {hoveredComponent === 're' && (
-                      <span><strong>RE (560Ω Emitter Stabilization Resistor):</strong> Provides negative DC feedback to stabilize Q-point against temperature variation and prevent thermal runaway.</span>
-                    )}
-                    {hoveredComponent === 'ce' && (
-                      <span><strong>CE (100µF Emitter Bypass Capacitor):</strong> Bypasses AC signal around RE to ground, preventing AC negative feedback and preserving high voltage gain (Av = {metrics.voltageGain}×).</span>
-                    )}
-                    {hoveredComponent === 'c1' && (
-                      <span><strong>C1 (10µF Input Coupling Capacitor):</strong> Blocks DC voltage from the signal source while passing AC audio signal to the transistor base.</span>
-                    )}
-                    {hoveredComponent === 'c2' && (
-                      <span><strong>C2 (10µF Output Coupling Capacitor):</strong> Blocks DC collector voltage (VCE) while passing amplified AC signal (Vo = {metrics.vOutPeak}V) to the load.</span>
-                    )}
-                    {hoveredComponent === 'vi' && (
-                      <span><strong>Vi (Input AC Signal Source):</strong> Peak AC input voltage = {params.vinPeak}V at {params.freqHz}Hz frequency.</span>
-                    )}
-                    {hoveredComponent === 'vo' && (
-                      <span><strong>Vo (Amplified Output Signal):</strong> Peak AC output voltage = {metrics.vOutPeak}V peak ({metrics.vOutRms}V RMS), AC Power = {metrics.pOutMw}mW.</span>
-                    )}
+                      <line x1="220" y1="85" x2="220" y2="120" stroke="#f59e0b" strokeWidth="2" />
+
+                      {p2Mode === 'classB' ? (
+                        <g>
+                          <rect x="213" y="120" width="14" height="25" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" rx="2" />
+                          <text x="175" y="136" fill="#f59e0b" fontSize="8" fontWeight="600">R3 (680Ω)</text>
+                          <line x1="220" y1="145" x2="220" y2="155" stroke="#f59e0b" strokeWidth="2" />
+                          <rect x="213" y="155" width="14" height="25" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" rx="2" />
+                          <text x="175" y="172" fill="#f59e0b" fontSize="8" fontWeight="600">R3 (680Ω)</text>
+                        </g>
+                      ) : (
+                        <g>
+                          <polygon points="214,122 226,122 220,134" fill="#10b981" stroke="#10b981" />
+                          <line x1="214" y1="134" x2="226" y2="134" stroke="#10b981" strokeWidth="2" />
+                          <text x="175" y="132" fill="#10b981" fontSize="9" fontWeight="700">D1 1N4148</text>
+
+                          <polygon points="214,148 226,148 220,160" fill="#10b981" stroke="#10b981" />
+                          <line x1="214" y1="160" x2="226" y2="160" stroke="#10b981" strokeWidth="2" />
+                          <text x="175" y="158" fill="#10b981" fontSize="9" fontWeight="700">D2 1N4148</text>
+                        </g>
+                      )}
+
+                      <line x1="220" y1="180" x2="220" y2="210" stroke="#f59e0b" strokeWidth="2" />
+                      <rect x="213" y="210" width="14" height="30" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" rx="2" />
+                      <text x="170" y="228" fill="#f59e0b" fontSize="9" fontWeight="700">R4 (4.7kΩ)</text>
+                      <line x1="220" y1="240" x2="220" y2="270" stroke="#f59e0b" strokeWidth="2" />
+
+                      <circle cx="220" cy="90" r="3.5" fill="#38bdf8" />
+                      <line x1="220" y1="90" x2="310" y2="90" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth={isQ1Active ? 2.5 : 1.5} />
+
+                      <circle cx="220" cy="210" r="3.5" fill="#38bdf8" />
+                      <line x1="220" y1="210" x2="310" y2="210" stroke={isQ2Active ? '#4ade80' : '#38bdf8'} strokeWidth={isQ2Active ? 2.5 : 1.5} />
+
+                      {/* Q1: NPN Transistor 2N3904 (DYNAMIC ACTIVE/INACTIVE VISUAL) */}
+                      <g opacity={isQ1Active ? 1 : 0.4}>
+                        <circle
+                          cx="330"
+                          cy="90"
+                          r="24"
+                          fill={isQ1Active ? '#450a0a' : '#0f172a'}
+                          stroke={isQ1Active ? '#f43f5e' : '#475569'}
+                          strokeWidth={isQ1Active ? 3 : 1.5}
+                          filter={isQ1Active ? 'url(#glow-rose)' : undefined}
+                        />
+                        <line x1="310" y1="90" x2="322" y2="90" stroke={isQ1Active ? '#f43f5e' : '#38bdf8'} strokeWidth="2" />
+                        <line x1="322" y1="75" x2="322" y2="105" stroke="#fff" strokeWidth="3" />
+                        <line x1="322" y1="80" x2="345" y2="65" stroke="#f43f5e" strokeWidth="2.5" />
+                        <line x1="345" y1="65" x2="345" y2="30" stroke="#f43f5e" strokeWidth="2.5" />
+                        <line x1="322" y1="100" x2="345" y2="115" stroke="#f43f5e" strokeWidth="2.5" />
+                        <polygon points="338,107 347,117 334,115" fill="#f43f5e" />
+                        <line x1="345" y1="115" x2="345" y2="150" stroke="#f43f5e" strokeWidth="2.5" />
+                        <text x="312" y="55" fill={isQ1Active ? '#f43f5e' : '#94a3b8'} fontSize="11" fontWeight="800">
+                          Q1 2N3904 (NPN)
+                        </text>
+
+                        {/* Q1 Status Badge */}
+                        <rect x="275" y="34" width="110" height="16" fill={isQ1Active ? 'rgba(244,63,94,0.9)' : 'rgba(30,41,59,0.8)'} rx="3" />
+                        <text x="280" y="46" fill={isQ1Active ? '#fff' : '#94a3b8'} fontSize="8" fontWeight="900">
+                          {isQ1Active ? '🔥 ACTIVE (ON)' : '💤 CUTOFF (OFF)'}
+                        </text>
+                      </g>
+
+                      {/* Q2: PNP Transistor 2N3906 (DYNAMIC ACTIVE/INACTIVE VISUAL) */}
+                      <g opacity={isQ2Active ? 1 : 0.4}>
+                        <circle
+                          cx="330"
+                          cy="210"
+                          r="24"
+                          fill={isQ2Active ? '#064e3b' : '#0f172a'}
+                          stroke={isQ2Active ? '#4ade80' : '#475569'}
+                          strokeWidth={isQ2Active ? 3 : 1.5}
+                          filter={isQ2Active ? 'url(#glow-green)' : undefined}
+                        />
+                        <line x1="310" y1="210" x2="322" y2="210" stroke={isQ2Active ? '#4ade80' : '#38bdf8'} strokeWidth="2" />
+                        <line x1="322" y1="195" x2="322" y2="225" stroke="#fff" strokeWidth="3" />
+                        <line x1="322" y1="200" x2="345" y2="185" stroke="#4ade80" strokeWidth="2.5" />
+                        <polygon points="328,198 322,200 330,190" fill="#4ade80" />
+                        <line x1="345" y1="185" x2="345" y2="150" stroke="#4ade80" strokeWidth="2.5" />
+                        <line x1="322" y1="220" x2="345" y2="235" stroke="#4ade80" strokeWidth="2.5" />
+                        <line x1="345" y1="235" x2="345" y2="270" stroke="#4ade80" strokeWidth="2.5" />
+                        <text x="312" y="250" fill={isQ2Active ? '#4ade80' : '#94a3b8'} fontSize="11" fontWeight="800">
+                          Q2 2N3906 (PNP)
+                        </text>
+
+                        {/* Q2 Status Badge */}
+                        <rect x="275" y="252" width="110" height="16" fill={isQ2Active ? 'rgba(74,222,128,0.9)' : 'rgba(30,41,59,0.8)'} rx="3" />
+                        <text x="280" y="264" fill={isQ2Active ? '#000' : '#94a3b8'} fontSize="8" fontWeight="900">
+                          {isQ2Active ? '🔥 ACTIVE (ON)' : '💤 CUTOFF (OFF)'}
+                        </text>
+                      </g>
+
+                      {/* Output Junction & Coupling Cap C3 */}
+                      <circle cx="345" cy="150" r="4.5" fill="#e2e8f0" />
+                      <line x1="345" y1="150" x2="440" y2="150" stroke={isP2Deadzone ? '#475569' : (isQ1Active ? '#f43f5e' : '#4ade80')} strokeWidth="2.5" />
+                      <line x1="440" y1="134" x2="440" y2="166" stroke="#38bdf8" strokeWidth="3" />
+                      <line x1="448" y1="134" x2="448" y2="166" stroke="#38bdf8" strokeWidth="3" />
+                      <line x1="448" y1="150" x2="520" y2="150" stroke={isP2Deadzone ? '#475569' : (isQ1Active ? '#f43f5e' : '#4ade80')} strokeWidth="2.5" />
+                      <text x="430" y="124" fill="#38bdf8" fontSize="10" fontWeight="700">C3 (100µF)</text>
+
+                      {/* Load Resistor RLout */}
+                      <line x1="520" y1="150" x2="520" y2="180" stroke={isP2Deadzone ? '#475569' : '#f43f5e'} strokeWidth="2" />
+                      <rect x="513" y="180" width="14" height="40" fill={isP2Deadzone ? '#0f172a' : '#1e293b'} stroke={isP2Deadzone ? '#475569' : '#f43f5e'} strokeWidth="2.5" rx="3" />
+                      <line x1="520" y1="220" x2="520" y2="270" stroke={isP2Deadzone ? '#475569' : '#f43f5e'} strokeWidth="2" />
+                      <text x="535" y="204" fill={isP2Deadzone ? '#64748b' : '#f43f5e'} fontSize="11" fontWeight="800">RL ({p2Rout}Ω)</text>
+
+                      {/* CRO Probe Output Node */}
+                      <circle cx="520" cy="150" r="4.5" fill="#f59e0b" />
+                      <line x1="520" y1="150" x2="590" y2="150" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 3" />
+                      <rect x="590" y="130" width="65" height="40" fill="#0f172a" stroke="#f59e0b" strokeWidth="2" rx="6" />
+                      <text x="600" y="154" fill="#f59e0b" fontSize="11" fontWeight="800">CRO CH2</text>
+
+                      {/* DMM Overlay */}
+                      {p2DmmActive && (
+                        <g>
+                          <rect x="75" y="38" width="85" height="24" fill="rgba(245,158,11,0.95)" rx="4" />
+                          <text x="82" y="54" fill="#000" fontSize="9" fontWeight="900">DMM Ri: {p2Rin} Ω</text>
+                          <line x1="117" y1="62" x2="117" y2="90" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 2" />
+
+                          <rect x="475" y="38" width="85" height="24" fill="rgba(74,222,128,0.95)" rx="4" />
+                          <text x="482" y="54" fill="#000" fontSize="9" fontWeight="900">DMM Ro: {p2Rout} Ω</text>
+                          <line x1="517" y1="62" x2="520" y2="150" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="2 2" />
+                        </g>
+                      )}
+
+                      {/* ANIMATED CYCLE DYNAMIC CURRENT FLOW PARTICLES */}
+                      {showCurrentFlow && (
+                        <g>
+                          {/* Q1 Positive Cycle Current Dots */}
+                          {isQ1Active && (
+                            <g>
+                              <line x1="345" y1="30" x2="345" y2="150" stroke="#f43f5e" strokeWidth="3" strokeDasharray="6 6" className="current-path-fast" filter="url(#glow-rose)" />
+                              <line x1="345" y1="150" x2="520" y2="150" stroke="#f43f5e" strokeWidth="3" strokeDasharray="6 6" className="current-path-forward" filter="url(#glow-rose)" />
+                              <line x1="520" y1="150" x2="520" y2="270" stroke="#f43f5e" strokeWidth="3" strokeDasharray="6 6" className="current-path-forward" filter="url(#glow-rose)" />
+                              <circle cx="345" cy={30 + ((animOffset * 2.5) % 120)} r="4" fill="#ffe4e6" />
+                              <circle cx={345 + ((animOffset * 2.5) % 175)} cy="150" r="4" fill="#ffe4e6" />
+                              <polygon points="440,150 430,145 430,155" fill="#f43f5e" />
+                            </g>
+                          )}
+
+                          {/* Q2 Negative Cycle Current Dots */}
+                          {isQ2Active && (
+                            <g>
+                              <line x1="520" y1="270" x2="520" y2="150" stroke="#4ade80" strokeWidth="3" strokeDasharray="6 6" className="current-path-reverse" filter="url(#glow-green)" />
+                              <line x1="520" y1="150" x2="345" y2="150" stroke="#4ade80" strokeWidth="3" strokeDasharray="6 6" className="current-path-reverse" filter="url(#glow-green)" />
+                              <line x1="345" y1="150" x2="345" y2="270" stroke="#4ade80" strokeWidth="3" strokeDasharray="6 6" className="current-path-fast" filter="url(#glow-green)" />
+                              <circle cx="520" cy={270 - ((animOffset * 2.5) % 120)} r="4" fill="#dcfce7" />
+                              <circle cx={520 - ((animOffset * 2.5) % 175)} cy="150" r="4" fill="#dcfce7" />
+                              <polygon points="410,150 420,145 420,155" fill="#4ade80" />
+                            </g>
+                          )}
+
+                          {/* Crossover Deadzone Notification in Class B */}
+                          {isP2Deadzone && (
+                            <g>
+                              <circle cx="345" cy="150" r="18" fill="none" stroke="#f59e0b" strokeWidth="2" opacity="0.8">
+                                <animate attributeName="r" values="12;24;12" dur="1.2s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.2s" repeatCount="indefinite" />
+                              </circle>
+                              <rect x="270" y="140" width="150" height="22" fill="rgba(245,158,11,0.95)" rx="4" />
+                              <text x="276" y="155" fill="#000" fontSize="9" fontWeight="900">
+                                ⚠️ DEADZONE: BOTH Q1 & Q2 OFF
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      )}
+                    </g>
+                  );
+                })()}
+                </svg>
+              </div>
+
+            {/* REAL-TIME COMPONENT ACTIVITY HUD CARD (PRACTICAL 2 FOCUS) */}
+            {selectedPracticalNo === 2 && (() => {
+              const instantVin = params.vinPeak * Math.sin(animOffset * 0.08);
+              const isP2Positive = instantVin > p2VbeCutoff;
+              const isP2Negative = instantVin < -p2VbeCutoff;
+              const isP2Deadzone = p2Mode === 'classB' && !isP2Positive && !isP2Negative;
+
+              const isQ1Active = p2Mode === 'classAB' ? instantVin > -0.05 : isP2Positive;
+              const isQ2Active = p2Mode === 'classAB' ? instantVin < 0.05 : isP2Negative;
+
+              return (
+                <div style={{ background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '8px', fontSize: '0.72rem' }}>
+                  {/* Q1 Activity Status */}
+                  <div style={{ padding: '6px 8px', background: isQ1Active ? 'rgba(244, 63, 94, 0.15)' : 'rgba(30, 41, 59, 0.4)', border: `1px solid ${isQ1Active ? '#f43f5e' : 'var(--border-color)'}`, borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: isQ1Active ? '#f43f5e' : 'var(--text-muted)' }}>Q1 (2N3904 NPN)</span>
+                      <span style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '3px', background: isQ1Active ? '#f43f5e' : '#334155', color: '#fff', fontWeight: 900 }}>
+                        {isQ1Active ? 'ACTIVE' : 'OFF'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                      {isQ1Active ? `Conducting +Vcc power into load (Vbe = +${instantVin.toFixed(2)}V > 0.7V).` : 'Base reverse biased (Cutoff). Zero collector current.'}
+                    </p>
+                  </div>
+
+                  {/* Q2 Activity Status */}
+                  <div style={{ padding: '6px 8px', background: isQ2Active ? 'rgba(74, 222, 128, 0.15)' : 'rgba(30, 41, 59, 0.4)', border: `1px solid ${isQ2Active ? '#4ade80' : 'var(--border-color)'}`, borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: isQ2Active ? '#4ade80' : 'var(--text-muted)' }}>Q2 (2N3906 PNP)</span>
+                      <span style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '3px', background: isQ2Active ? '#4ade80' : '#334155', color: isQ2Active ? '#000' : '#fff', fontWeight: 900 }}>
+                        {isQ2Active ? 'ACTIVE' : 'OFF'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                      {isQ2Active ? `Sinking load current to Ground (Vbe = ${instantVin.toFixed(2)}V < -0.7V).` : 'Base reverse biased (Cutoff). Zero collector current.'}
+                    </p>
+                  </div>
+
+                  {/* C1 & C2 Coupling Caps */}
+                  <div style={{ padding: '6px 8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: 800, color: '#38bdf8', display: 'block' }}>C1 & C2 (1µF Caps)</span>
+                    <p style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                      {isQ1Active ? 'C1 passes +AC cycle to Q1 base.' : (isQ2Active ? 'C2 passes -AC cycle to Q2 base.' : 'Blocking DC while waiting for Vin threshold.')}
+                    </p>
+                  </div>
+
+                  {/* C3 Output Cap */}
+                  <div style={{ padding: '6px 8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '6px' }}>
+                    <span style={{ fontWeight: 800, color: '#f59e0b', display: 'block' }}>C3 (100µF Output)</span>
+                    <p style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                      {isQ1Active ? 'Charging from Q1 output.' : (isQ2Active ? 'Discharging through Q2.' : 'Holding DC charge.')}
+                    </p>
+                  </div>
+
+                  {/* RL Output Load */}
+                  <div style={{ padding: '6px 8px', background: isP2Deadzone ? 'rgba(245, 158, 11, 0.15)' : 'rgba(244, 63, 94, 0.15)', border: `1px solid ${isP2Deadzone ? '#f59e0b' : '#f43f5e'}`, borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 800, color: isP2Deadzone ? '#f59e0b' : '#f43f5e' }}>RL ({p2Rout}Ω Load)</span>
+                      <span style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '3px', background: isP2Deadzone ? '#f59e0b' : '#f43f5e', color: isP2Deadzone ? '#000' : '#fff', fontWeight: 900 }}>
+                        {isP2Deadzone ? '0V NOTCH' : (isQ1Active ? '+Vo DRIVE' : '-Vo SINK')}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                      {isP2Deadzone ? 'Zero output voltage (Crossover Notch).' : `Driving ${instantVin > 0 ? 'positive' : 'negative'} half cycle.`}
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Circuit Current Legend & Ammeter Summary HUD */}
             <div style={{ background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', fontSize: '0.74rem' }}>
@@ -1112,8 +1274,8 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
 
               <div style={{ padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px' }}>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, display: 'block' }}>⚡ Q-Point Bias (VCEQ)</span>
-                <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{vCeqVal} V</strong>
-                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', display: 'block' }}>Centered at VCC/2 ({((Number(vCeqVal) / params.vcc) * 100).toFixed(0)}%)</span>
+                <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{metrics.vCeq} V</strong>
+                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', display: 'block' }}>Centered at VCC/2 ({((Number(metrics.vCeq) / params.vcc) * 100).toFixed(0)}%)</span>
               </div>
             </div>
 
@@ -1394,21 +1556,23 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
           </div>
         )}
 
-        {/* TAB 3: MSBTE TABLE NO 1.1 OBSERVATIONS & CALCULATIONS */}
+        {/* TAB 3: MSBTE TABLE NO 1.1 / 2.1 OBSERVATIONS & CALCULATIONS */}
         {activeTab === 'table' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Table No. 1.1: Performance Observations & Calculations
+                  {selectedPracticalNo === 2 ? 'Table No. 2.1 Observation Table: Performance of Class B Push Pull Amplifier' : 'Table No. 1.1: Performance Observations & Calculations'}
                 </h3>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Calculated formulas: Pac = Vo² / (2 · RL) • Pdc = Vcc · Icq • % Efficiency = (Pac / Pdc) · 100
+                  {selectedPracticalNo === 2
+                    ? `MSBTE Formulas: Pi = Vi² / Ri (${p2Rin}Ω) • Po = Vo² / Ro (${p2Rout}Ω) • % Efficiency = (Po / Pi) · 100`
+                    : 'Calculated formulas: Pac = Vo² / (2 · RL) • Pdc = Vcc · Icq • % Efficiency = (Pac / Pdc) · 100'}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button
-                  onClick={handleAddObservation}
+                  onClick={selectedPracticalNo === 2 ? handleAddP2Observation : handleAddObservation}
                   style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '0.75rem', cursor: 'pointer' }}
                 >
                   + Add Live Observation Row
@@ -1423,49 +1587,111 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
             </div>
 
             <div style={{ borderRadius: '10px', border: '1px solid var(--border-color)', overflow: 'hidden', background: 'var(--bg-panel)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', color: 'var(--accent-cyan)', textAlign: 'center' }}>
-                    <th style={{ padding: '8px' }}>Sr. No.</th>
-                    <th style={{ padding: '8px' }}>Input Voltage [Vi] (V)</th>
-                    <th style={{ padding: '8px' }}>Output Voltage [Vo] (V)</th>
-                    <th style={{ padding: '8px' }}>Pac = Vo² / 2RL (Watts)</th>
-                    <th style={{ padding: '8px' }}>Pdc = Vcc · Icq (Watts)</th>
-                    <th style={{ padding: '8px' }}>% Efficiency = (Pac / Pdc) · 100</th>
-                    <th style={{ padding: '8px' }}>Base Ib (µA)</th>
-                    <th style={{ padding: '8px' }}>Collector Ic (mA)</th>
-                    <th style={{ padding: '8px' }}>Vce (V)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {observationRows.map((row) => (
-                    <tr key={row.srNo} style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
-                      <td style={{ padding: '8px', fontWeight: 700 }}>{row.srNo}</td>
-                      <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{row.vIn} V</td>
-                      <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{row.vOut} V</td>
-                      <td style={{ padding: '8px' }}>{row.pAc} W</td>
-                      <td style={{ padding: '8px' }}>{row.pDc} W</td>
-                      <td style={{ padding: '8px', color: 'var(--accent-emerald)', fontWeight: 800 }}>{row.efficiency}%</td>
-                      <td style={{ padding: '8px', color: 'var(--accent-amber)' }}>{row.iBaseUa} µA</td>
-                      <td style={{ padding: '8px', color: 'var(--accent-amber)' }}>{row.iCollectorMa} mA</td>
-                      <td style={{ padding: '8px' }}>{row.vCe} V</td>
+              {selectedPracticalNo === 2 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', color: '#f43f5e', textAlign: 'center' }}>
+                      <th style={{ padding: '8px' }}>Sr. No.</th>
+                      <th style={{ padding: '8px' }}>Input Voltage [Vi] (V)</th>
+                      <th style={{ padding: '8px' }}>Output Voltage [Vo] (V)</th>
+                      <th style={{ padding: '8px' }}>Pi = Vi² / Ri (Watts)</th>
+                      <th style={{ padding: '8px' }}>Po = Vo² / Ro (Watts)</th>
+                      <th style={{ padding: '8px' }}>% Efficiency = (Po / Pi) · 100</th>
+                      <th style={{ padding: '8px' }}>Q1 Ic Peak (mA)</th>
+                      <th style={{ padding: '8px' }}>Q2 Ic Peak (mA)</th>
                     </tr>
-                  ))}
-                  {/* Current Active Live Row */}
-                  <tr style={{ background: 'rgba(56, 189, 248, 0.1)', textAlign: 'center', fontWeight: 700 }}>
-                    <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>Live</td>
-                    <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{currentObsRow.vIn} V</td>
-                    <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{currentObsRow.vOut} V</td>
-                    <td style={{ padding: '8px' }}>{currentObsRow.pAc} W</td>
-                    <td style={{ padding: '8px' }}>{currentObsRow.pDc} W</td>
-                    <td style={{ padding: '8px', color: 'var(--accent-emerald)' }}>{currentObsRow.efficiency}%</td>
-                    <td style={{ padding: '8px' }}>{currentObsRow.iBaseUa} µA</td>
-                    <td style={{ padding: '8px' }}>{currentObsRow.iCollectorMa} mA</td>
-                    <td style={{ padding: '8px' }}>{currentObsRow.vCe} V</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {p2ObsRows.map((row) => (
+                      <tr key={row.srNo} style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>{row.srNo}</td>
+                        <td style={{ padding: '8px', color: '#38bdf8' }}>{row.vIn} V</td>
+                        <td style={{ padding: '8px', color: '#38bdf8' }}>{row.vOut} V</td>
+                        <td style={{ padding: '8px' }}>{row.pIn} W</td>
+                        <td style={{ padding: '8px' }}>{row.pOut} W</td>
+                        <td style={{ padding: '8px', color: '#4ade80', fontWeight: 800 }}>{row.efficiency}%</td>
+                        <td style={{ padding: '8px', color: '#f43f5e' }}>{row.icQ1Ma} mA</td>
+                        <td style={{ padding: '8px', color: '#4ade80' }}>{row.icQ2Ma} mA</td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: 'rgba(244, 63, 94, 0.1)', textAlign: 'center', fontWeight: 700 }}>
+                      <td style={{ padding: '8px', color: '#f43f5e' }}>Live</td>
+                      <td style={{ padding: '8px', color: '#38bdf8' }}>{currentP2ObsRow.vIn} V</td>
+                      <td style={{ padding: '8px', color: '#38bdf8' }}>{currentP2ObsRow.vOut} V</td>
+                      <td style={{ padding: '8px' }}>{currentP2ObsRow.pIn} W</td>
+                      <td style={{ padding: '8px' }}>{currentP2ObsRow.pOut} W</td>
+                      <td style={{ padding: '8px', color: '#4ade80' }}>{currentP2ObsRow.efficiency}%</td>
+                      <td style={{ padding: '8px' }}>{currentP2ObsRow.icQ1Ma} mA</td>
+                      <td style={{ padding: '8px' }}>{currentP2ObsRow.icQ2Ma} mA</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', color: 'var(--accent-cyan)', textAlign: 'center' }}>
+                      <th style={{ padding: '8px' }}>Sr. No.</th>
+                      <th style={{ padding: '8px' }}>Input Voltage [Vi] (V)</th>
+                      <th style={{ padding: '8px' }}>Output Voltage [Vo] (V)</th>
+                      <th style={{ padding: '8px' }}>Pac = Vo² / 2RL (Watts)</th>
+                      <th style={{ padding: '8px' }}>Pdc = Vcc · Icq (Watts)</th>
+                      <th style={{ padding: '8px' }}>% Efficiency = (Pac / Pdc) · 100</th>
+                      <th style={{ padding: '8px' }}>Base Ib (µA)</th>
+                      <th style={{ padding: '8px' }}>Collector Ic (mA)</th>
+                      <th style={{ padding: '8px' }}>Vce (V)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {observationRows.map((row) => (
+                      <tr key={row.srNo} style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>{row.srNo}</td>
+                        <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{row.vIn} V</td>
+                        <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{row.vOut} V</td>
+                        <td style={{ padding: '8px' }}>{row.pAc} W</td>
+                        <td style={{ padding: '8px' }}>{row.pDc} W</td>
+                        <td style={{ padding: '8px', color: 'var(--accent-emerald)', fontWeight: 800 }}>{row.efficiency}%</td>
+                        <td style={{ padding: '8px', color: 'var(--accent-amber)' }}>{row.iBaseUa} µA</td>
+                        <td style={{ padding: '8px', color: 'var(--accent-amber)' }}>{row.iCollectorMa} mA</td>
+                        <td style={{ padding: '8px' }}>{row.vCe} V</td>
+                      </tr>
+                    ))}
+                    {/* Current Active Live Row */}
+                    <tr style={{ background: 'rgba(56, 189, 248, 0.1)', textAlign: 'center', fontWeight: 700 }}>
+                      <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>Live</td>
+                      <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{currentObsRow.vIn} V</td>
+                      <td style={{ padding: '8px', color: 'var(--accent-cyan)' }}>{currentObsRow.vOut} V</td>
+                      <td style={{ padding: '8px' }}>{currentObsRow.pAc} W</td>
+                      <td style={{ padding: '8px' }}>{currentObsRow.pDc} W</td>
+                      <td style={{ padding: '8px', color: 'var(--accent-emerald)' }}>{currentObsRow.efficiency}%</td>
+                      <td style={{ padding: '8px' }}>{currentObsRow.iBaseUa} µA</td>
+                      <td style={{ padding: '8px' }}>{currentObsRow.iCollectorMa} mA</td>
+                      <td style={{ padding: '8px' }}>{currentObsRow.vCe} V</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
+
+            {selectedPracticalNo === 2 && (
+              <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', fontSize: '0.78rem' }}>
+                <h4 style={{ color: '#f59e0b', marginBottom: '6px', fontWeight: 700 }}>XIII. Observations, Formulas & Calculations (MSBTE Manual Image 2)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', color: 'var(--text-secondary)' }}>
+                  <div>
+                    <p><strong>Ri = {p2Rin} Ω</strong> (Input resistance measured at input of Class-B amplifier using DMM)</p>
+                    <p><strong>Ro = {p2Rout} Ω</strong> (Output resistance measured at output of Class-B amplifier using DMM)</p>
+                  </div>
+                  <div>
+                    <p><strong>i. Pi = Vi² / Ri =</strong> ({(2.0 * 2.0 / p2Rin).toFixed(4)} W when Vi=2V)</p>
+                    <p><strong>ii. Po = Vo² / Ro =</strong> ({(2.6 * 2.6 / p2Rout).toFixed(4)} W when Vo=2.6V)</p>
+                    <p><strong>iii. % Efficiency = Po / Pi * 100 =</strong> <span style={{ color: '#4ade80', fontWeight: 800 }}>{p2ObsRows.find((r) => r.vIn === 2.0)?.efficiency || 1149.66}%</span></p>
+                  </div>
+                </div>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                  <span><strong>XIV. Results:</strong> % Efficiency = {p2ObsRows.find((r) => r.vIn === 2.0)?.efficiency || 1149.66}% (When Vi = 2 Volt)</span>
+                  <span><strong>XV. Interpretation:</strong> Class B Push-Pull provides high power output & efficiency up to 78.5%.</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1538,149 +1764,296 @@ Generated by EJ-SSPI Virtual Electronics Laboratory Simulator
           </div>
         )}
 
-        {/* TAB 5: MSBTE PRACTICAL RELATED QUESTIONS & ANSWERS (SECTION XVI) */}
+        {/* TAB 5: MSBTE PRACTICAL RELATED QUESTIONS & ANSWERS */}
         {activeTab === 'questions' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', fontSize: '0.8rem' }}>
             <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '4px' }}>
-                XVI. Practical Related Questions & Official MSBTE Solutions
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: selectedPracticalNo === 2 ? '#f43f5e' : 'var(--accent-cyan)', marginBottom: '4px' }}>
+                {selectedPracticalNo === 2
+                  ? 'XVII. Practical Related Questions & Solutions (MSBTE Manual Image 1)'
+                  : 'XVI. Practical Related Questions & Official MSBTE Solutions'}
               </h3>
               <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Comprehensive datasheet parameters and technical answers from Maharashtra State Board of Technical Education ('K' Scheme).
+                Official MSBTE ('K' Scheme) practical questions and model solutions for student laboratory viva and exams.
               </p>
             </div>
 
-            {/* Question 1 */}
-            <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
-                Q1. List the low power transistor and high-power transistor using a datasheet.
-              </div>
-              <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                <p><strong>Answer:</strong></p>
-                <ul style={{ paddingLeft: '18px', marginTop: '4px' }}>
-                  <li>
-                    <strong style={{ color: 'var(--accent-amber)' }}>Low Power Transistors (Small Signal):</strong> BC547, BC548, 2N2222, BC557, C9014. These are low-current transistors used in audio preamplifiers, sensor signal conditioning, and switching circuits. (Max power dissipation PD &lt; 1W, collector current IC &lt; 500mA, TO-92 plastic package).
-                  </li>
-                  <li style={{ marginTop: '4px' }}>
-                    <strong style={{ color: 'var(--accent-rose)' }}>High Power Transistors:</strong> 2N3055, TIP31C, BD139, SL100, BD115, TIP122. These handle large currents and voltages in power output stages and motor drives. (Max power dissipation PD &gt; 10W up to 115W, collector current IC &gt; 1.5A up to 15A, TO-3 metal can or TO-220 packages requiring heatsinks).
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Question 2 */}
-            <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
-                Q2. List the ratings of low power transistors and high power transistors using a datasheet.
-              </div>
-              <div style={{ color: 'var(--text-secondary)' }}>
-                <p style={{ marginBottom: '6px' }}><strong>Answer: Technical Datasheet Parameter Comparison Table</strong></p>
-                <div style={{ borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--bg-panel)', color: 'var(--accent-cyan)', textAlign: 'left' }}>
-                        <th style={{ padding: '6px' }}>Datasheet Rating / Parameter</th>
-                        <th style={{ padding: '6px' }}>BC547 (Low Power)</th>
-                        <th style={{ padding: '6px' }}>2N3055 (High Power)</th>
-                        <th style={{ padding: '6px' }}>SL100 (Medium/High Power)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Collector-Emitter Voltage (VCEO)</td>
-                        <td style={{ padding: '6px' }}>45 V</td>
-                        <td style={{ padding: '6px' }}>60 V</td>
-                        <td style={{ padding: '6px' }}>50 V</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Max Collector Current (IC max)</td>
-                        <td style={{ padding: '6px' }}>100 mA</td>
-                        <td style={{ padding: '6px' }}>15 A</td>
-                        <td style={{ padding: '6px' }}>800 mA</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Max Power Dissipation (PD max)</td>
-                        <td style={{ padding: '6px' }}>500 mW (0.5W)</td>
-                        <td style={{ padding: '6px' }}>115 W (with sink)</td>
-                        <td style={{ padding: '6px' }}>800 mW (3W with sink)</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>DC Current Gain (hFE / β)</td>
-                        <td style={{ padding: '6px' }}>110 to 800</td>
-                        <td style={{ padding: '6px' }}>20 to 70</td>
-                        <td style={{ padding: '6px' }}>50 to 300</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Package / Case Construction</td>
-                        <td style={{ padding: '6px' }}>TO-92 (Plastic)</td>
-                        <td style={{ padding: '6px' }}>TO-3 (Metal Can)</td>
-                        <td style={{ padding: '6px' }}>TO-39 (Metal Can)</td>
-                      </tr>
-                    </tbody>
-                  </table>
+            {selectedPracticalNo === 2 ? (
+              <>
+                {/* Practical 2 Q1 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: '#f43f5e', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Q1. What is meant by Cross Over Distortion?</span>
+                    <button
+                      onClick={() => setP2QuizAnswers((prev) => ({ ...prev, 1: !prev[1] }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #f43f5e', background: 'transparent', color: '#f43f5e', fontSize: '0.7rem', cursor: 'pointer' }}
+                    >
+                      {p2QuizAnswers[1] ? 'Hide Solution' : 'Show Answer'}
+                    </button>
+                  </div>
+                  {(p2QuizAnswers[1] ?? true) && (
+                    <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      <p><strong>Answer:</strong></p>
+                      <p>
+                        Crossover distortion is a type of non-linear waveform distortion that occurs in Class B push-pull amplifiers during the zero-crossing transition when one transistor turns OFF and the other turns ON.
+                      </p>
+                      <p style={{ marginTop: '4px' }}>
+                        Because silicon BJTs (NPN 2N3904 and PNP 2N3906) require a minimum base-emitter cutoff threshold voltage of <strong>VBE ≈ 0.6V to 0.7V</strong> to conduct, there exists a deadband region between -0.7V and +0.7V where <strong>neither transistor conducts (both in Cutoff, IB = 0)</strong>. This causes a flat horizontal notch near the zero voltage crossing on the output waveform.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
 
-            {/* Question 3 */}
-            <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
-                Q3. Differentiate Class A, B, AB, C power amplifier.
-              </div>
-              <div style={{ color: 'var(--text-secondary)' }}>
-                <p style={{ marginBottom: '6px' }}><strong>Answer: Power Amplifier Classification Comparison Matrix</strong></p>
-                <div style={{ borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.73rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--bg-panel)', color: 'var(--accent-cyan)', textAlign: 'left' }}>
-                        <th style={{ padding: '6px' }}>Parameter</th>
-                        <th style={{ padding: '6px' }}>Class A</th>
-                        <th style={{ padding: '6px' }}>Class B</th>
-                        <th style={{ padding: '6px' }}>Class AB</th>
-                        <th style={{ padding: '6px' }}>Class C</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Operating Q-Point</td>
-                        <td style={{ padding: '6px' }}>Center of Load line</td>
-                        <td style={{ padding: '6px' }}>At Cutoff (IB=0)</td>
-                        <td style={{ padding: '6px' }}>Slightly above Cutoff</td>
-                        <td style={{ padding: '6px' }}>Deep inside Cutoff</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Conduction Angle (θ)</td>
-                        <td style={{ padding: '6px' }}>360° (Full cycle)</td>
-                        <td style={{ padding: '6px' }}>180° (Half cycle)</td>
-                        <td style={{ padding: '6px' }}>200° to 220°</td>
-                        <td style={{ padding: '6px' }}>&lt; 120° (Short pulses)</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Theoretical Max Efficiency</td>
-                        <td style={{ padding: '6px' }}>25% (Direct) / 50%</td>
-                        <td style={{ padding: '6px' }}>78.5%</td>
-                        <td style={{ padding: '6px' }}>60% to 70%</td>
-                        <td style={{ padding: '6px' }}>80% to 90%</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Distortion Level</td>
-                        <td style={{ padding: '6px' }}>Minimum (High fidelity)</td>
-                        <td style={{ padding: '6px' }}>Crossover distortion</td>
-                        <td style={{ padding: '6px' }}>Zero crossover distortion</td>
-                        <td style={{ padding: '6px' }}>High harmonic distortion</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '6px', fontWeight: 600 }}>Primary Application</td>
-                        <td style={{ padding: '6px' }}>Audio Preamplifiers</td>
-                        <td style={{ padding: '6px' }}>Push-Pull Output Stages</td>
-                        <td style={{ padding: '6px' }}>Hi-Fi Audio Amplifiers</td>
-                        <td style={{ padding: '6px' }}>RF Transmitters / Tuned</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                {/* Practical 2 Q2 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: '#f43f5e', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Q2. State the applications of Class B Push Pull Amplifier.</span>
+                    <button
+                      onClick={() => setP2QuizAnswers((prev) => ({ ...prev, 2: !prev[2] }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #f43f5e', background: 'transparent', color: '#f43f5e', fontSize: '0.7rem', cursor: 'pointer' }}
+                    >
+                      {p2QuizAnswers[2] ? 'Hide Solution' : 'Show Answer'}
+                    </button>
+                  </div>
+                  {(p2QuizAnswers[2] ?? true) && (
+                    <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      <p><strong>Answer: Key Engineering Applications:</strong></p>
+                      <ul style={{ paddingLeft: '18px', marginTop: '4px' }}>
+                        <li><strong>Audio Power Output Stages:</strong> Used in public address (PA) systems, speakers, and audio amplifiers for driving 4Ω to 16Ω loads.</li>
+                        <li><strong>RF Power Amplifiers:</strong> Used in radio transmitters and communication systems.</li>
+                        <li><strong>Motor Speed Drivers & Servo Amplifiers:</strong> Used to drive current in either direction through DC motors.</li>
+                        <li><strong>Portable Battery Operated Devices:</strong> Selected due to high collector efficiency (up to 78.5%) and zero idle DC power consumption.</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+
+                {/* Practical 2 Q3 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: '#f43f5e', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Q3. State the difference between a Voltage Amplifier and a Power Amplifier.</span>
+                    <button
+                      onClick={() => setP2QuizAnswers((prev) => ({ ...prev, 3: !prev[3] }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #f43f5e', background: 'transparent', color: '#f43f5e', fontSize: '0.7rem', cursor: 'pointer' }}
+                    >
+                      {p2QuizAnswers[3] ? 'Hide Solution' : 'Show Answer'}
+                    </button>
+                  </div>
+                  {(p2QuizAnswers[3] ?? true) && (
+                    <div style={{ color: 'var(--text-secondary)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', marginTop: '4px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-panel)', color: '#f43f5e', textAlign: 'left' }}>
+                            <th style={{ padding: '6px' }}>Parameter</th>
+                            <th style={{ padding: '6px' }}>Voltage Amplifier</th>
+                            <th style={{ padding: '6px' }}>Power Amplifier</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Primary Objective</td>
+                            <td style={{ padding: '6px' }}>Raise signal voltage amplitude (Av)</td>
+                            <td style={{ padding: '6px' }}>Deliver maximum AC power to load (Po)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Input Signal Amplitude</td>
+                            <td style={{ padding: '6px' }}>Small signals (mV range)</td>
+                            <td style={{ padding: '6px' }}>Large signals (Volts range)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Load Impedance (RL)</td>
+                            <td style={{ padding: '6px' }}>High load resistance (10kΩ - 100kΩ)</td>
+                            <td style={{ padding: '6px' }}>Low load resistance (4Ω - 100Ω)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Collector Efficiency (η)</td>
+                            <td style={{ padding: '6px' }}>Low priority (&lt; 10%)</td>
+                            <td style={{ padding: '6px' }}>High priority (up to 78.5% in Class B)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Practical 2 Q4 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: '#f43f5e', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Q4. State the difference between an Amplifier and an Oscillator.</span>
+                    <button
+                      onClick={() => setP2QuizAnswers((prev) => ({ ...prev, 4: !prev[4] }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #f43f5e', background: 'transparent', color: '#f43f5e', fontSize: '0.7rem', cursor: 'pointer' }}
+                    >
+                      {p2QuizAnswers[4] ? 'Hide Solution' : 'Show Answer'}
+                    </button>
+                  </div>
+                  {(p2QuizAnswers[4] ?? true) && (
+                    <div style={{ color: 'var(--text-secondary)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', marginTop: '4px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-panel)', color: '#f43f5e', textAlign: 'left' }}>
+                            <th style={{ padding: '6px' }}>Parameter</th>
+                            <th style={{ padding: '6px' }}>Amplifier</th>
+                            <th style={{ padding: '6px' }}>Oscillator</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Input Signal Required</td>
+                            <td style={{ padding: '6px' }}>Requires external AC input signal</td>
+                            <td style={{ padding: '6px' }}>No external AC input signal needed</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Feedback Mechanism</td>
+                            <td style={{ padding: '6px' }}>Negative feedback (for stability)</td>
+                            <td style={{ padding: '6px' }}>Positive feedback (Barkhausen criterion)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Energy Conversion</td>
+                            <td style={{ padding: '6px' }}>Converts DC energy to AC signal controlled by input</td>
+                            <td style={{ padding: '6px' }}>Converts DC power into self-sustaining AC waveform</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Question 1 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
+                    Q1. List the low power transistor and high-power transistor using a datasheet.
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <p><strong>Answer:</strong></p>
+                    <ul style={{ paddingLeft: '18px', marginTop: '4px' }}>
+                      <li>
+                        <strong style={{ color: 'var(--accent-amber)' }}>Low Power Transistors (Small Signal):</strong> BC547, BC548, 2N2222, BC557, C9014. These are low-current transistors used in audio preamplifiers, sensor signal conditioning, and switching circuits. (Max power dissipation PD &lt; 1W, collector current IC &lt; 500mA, TO-92 plastic package).
+                      </li>
+                      <li style={{ marginTop: '4px' }}>
+                        <strong style={{ color: 'var(--accent-rose)' }}>High Power Transistors:</strong> 2N3055, TIP31C, BD139, SL100, BD115, TIP122. These handle large currents and voltages in power output stages and motor drives. (Max power dissipation PD &gt; 10W up to 115W, collector current IC &gt; 1.5A up to 15A, TO-3 metal can or TO-220 packages requiring heatsinks).
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Question 2 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
+                    Q2. List the ratings of low power transistors and high power transistors using a datasheet.
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    <p style={{ marginBottom: '6px' }}><strong>Answer: Technical Datasheet Parameter Comparison Table</strong></p>
+                    <div style={{ borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-panel)', color: 'var(--accent-cyan)', textAlign: 'left' }}>
+                            <th style={{ padding: '6px' }}>Datasheet Rating / Parameter</th>
+                            <th style={{ padding: '6px' }}>BC547 (Low Power)</th>
+                            <th style={{ padding: '6px' }}>2N3055 (High Power)</th>
+                            <th style={{ padding: '6px' }}>SL100 (Medium/High Power)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Collector-Emitter Voltage (VCEO)</td>
+                            <td style={{ padding: '6px' }}>45 V</td>
+                            <td style={{ padding: '6px' }}>60 V</td>
+                            <td style={{ padding: '6px' }}>50 V</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Max Collector Current (IC max)</td>
+                            <td style={{ padding: '6px' }}>100 mA</td>
+                            <td style={{ padding: '6px' }}>15 A</td>
+                            <td style={{ padding: '6px' }}>800 mA</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Max Power Dissipation (PD max)</td>
+                            <td style={{ padding: '6px' }}>500 mW (0.5W)</td>
+                            <td style={{ padding: '6px' }}>115 W (with sink)</td>
+                            <td style={{ padding: '6px' }}>800 mW (3W with sink)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>DC Current Gain (hFE / β)</td>
+                            <td style={{ padding: '6px' }}>110 to 800</td>
+                            <td style={{ padding: '6px' }}>20 to 70</td>
+                            <td style={{ padding: '6px' }}>50 to 300</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Package / Case Construction</td>
+                            <td style={{ padding: '6px' }}>TO-92 (Plastic)</td>
+                            <td style={{ padding: '6px' }}>TO-3 (Metal Can)</td>
+                            <td style={{ padding: '6px' }}>TO-39 (Metal Can)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Question 3 */}
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
+                    Q3. Differentiate Class A, B, AB, C power amplifier.
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    <p style={{ marginBottom: '6px' }}><strong>Answer: Power Amplifier Classification Comparison Matrix</strong></p>
+                    <div style={{ borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.73rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-panel)', color: 'var(--accent-cyan)', textAlign: 'left' }}>
+                            <th style={{ padding: '6px' }}>Parameter</th>
+                            <th style={{ padding: '6px' }}>Class A</th>
+                            <th style={{ padding: '6px' }}>Class B</th>
+                            <th style={{ padding: '6px' }}>Class AB</th>
+                            <th style={{ padding: '6px' }}>Class C</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Operating Q-Point</td>
+                            <td style={{ padding: '6px' }}>Center of Load line</td>
+                            <td style={{ padding: '6px' }}>At Cutoff (IB=0)</td>
+                            <td style={{ padding: '6px' }}>Slightly above Cutoff</td>
+                            <td style={{ padding: '6px' }}>Deep inside Cutoff</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Conduction Angle (θ)</td>
+                            <td style={{ padding: '6px' }}>360° (Full cycle)</td>
+                            <td style={{ padding: '6px' }}>180° (Half cycle)</td>
+                            <td style={{ padding: '6px' }}>200° to 220°</td>
+                            <td style={{ padding: '6px' }}>&lt; 120° (Short pulses)</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Theoretical Max Efficiency</td>
+                            <td style={{ padding: '6px' }}>25% (Direct) / 50%</td>
+                            <td style={{ padding: '6px' }}>78.5%</td>
+                            <td style={{ padding: '6px' }}>60% to 70%</td>
+                            <td style={{ padding: '6px' }}>80% to 90%</td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Distortion Level</td>
+                            <td style={{ padding: '6px' }}>Minimum (High fidelity)</td>
+                            <td style={{ padding: '6px' }}>Crossover distortion</td>
+                            <td style={{ padding: '6px' }}>Zero crossover distortion</td>
+                            <td style={{ padding: '6px' }}>High harmonic distortion</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px', fontWeight: 600 }}>Primary Application</td>
+                            <td style={{ padding: '6px' }}>Audio Preamplifiers</td>
+                            <td style={{ padding: '6px' }}>Push-Pull Output Stages</td>
+                            <td style={{ padding: '6px' }}>Hi-Fi Audio Amplifiers</td>
+                            <td style={{ padding: '6px' }}>RF Transmitters / Tuned</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

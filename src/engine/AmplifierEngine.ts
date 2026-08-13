@@ -414,6 +414,60 @@ export function calculateMsbteObservationRow(
   };
 }
 
+export interface MsbtePractical2Row {
+  srNo: number;
+  vIn: number; // Input Voltage Vi (V)
+  vOut: number; // Output Voltage Vo (V)
+  rIn: number; // Input Resistance Ri (ohms)
+  rOut: number; // Output Resistance Ro (ohms)
+  pIn: number; // Pi = Vi^2 / Ri (W)
+  pOut: number; // Po = Vo^2 / Ro (W)
+  efficiency: number; // % Efficiency = (Po / Pi) * 100
+  icQ1Ma: number; // Q1 NPN Peak Collector Current (mA)
+  icQ2Ma: number; // Q2 PNP Peak Collector Current (mA)
+  crossoverNotchV: number; // Deadband voltage (V)
+}
+
+export function calculateMsbtePractical2Row(
+  srNo: number,
+  vIn: number,
+  rIn: number = 680,
+  rOut: number = 100,
+  vcc: number = 5,
+  gain: number = 2.0,
+  vBeCutoff: number = 0.7,
+  isDiodeBiased: boolean = false
+): MsbtePractical2Row {
+  const maxVout = vcc - 0.8;
+  const effectiveVin = isDiodeBiased ? vIn : Math.max(0, vIn - vBeCutoff);
+  const vOut = Number(Math.min(effectiveVin * gain, maxVout).toFixed(2));
+
+  // Pi = Vi^2 / Ri (Watts)
+  const pInWatts = (vIn * vIn) / rIn;
+  // Po = Vo^2 / Ro (Watts)
+  const pOutWatts = (vOut * vOut) / rOut;
+
+  // % Efficiency = (Po / Pi) * 100
+  const efficiency = pInWatts > 0 ? (pOutWatts / pInWatts) * 100 : 0;
+
+  const icQ1Ma = Number(((vOut / rOut) * 1000).toFixed(1));
+  const icQ2Ma = Number(((vOut / rOut) * 1000).toFixed(1));
+
+  return {
+    srNo,
+    vIn: Number(vIn.toFixed(2)),
+    vOut,
+    rIn,
+    rOut,
+    pIn: Number(pInWatts.toFixed(4)),
+    pOut: Number(pOutWatts.toFixed(4)),
+    efficiency: Number(efficiency.toFixed(2)),
+    icQ1Ma,
+    icQ2Ma,
+    crossoverNotchV: isDiodeBiased ? 0 : vBeCutoff,
+  };
+}
+
 export interface BjtCurvePoint {
   vCe: number;
   iC: number;
