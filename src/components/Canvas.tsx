@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import type { CircuitNode, Wire, NodeType } from '../types/logic';
+import type { CircuitNode, Wire, NodeType, Port } from '../types/logic';
 import { WireRenderer, getPortAbsoluteCoords } from './WireRenderer';
 import { GateNode } from './GateNode';
 import { COMPONENT_METADATA } from '../engine/GateLogic';
@@ -67,6 +67,16 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [boxSelectStart, setBoxSelectStart] = useState<{ x: number; y: number } | null>(null);
   const [boxSelectCurrent, setBoxSelectCurrent] = useState<{ x: number; y: number } | null>(null);
 
+  // Track touch drag distance to distinguish tap-to-connect from drag-to-connect
+  const dragDistanceRef = useRef<number>(0);
+
+  // Refs for state inside global event listeners
+  const draftWireRef = useRef(draftWire);
+  draftWireRef.current = draftWire;
+
+  const hoveredPortRef = useRef(hoveredPort);
+  hoveredPortRef.current = hoveredPort;
+
   // Screen coords to canvas coords
   const getCanvasCoords = (clientX: number, clientY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -74,6 +84,38 @@ export const Canvas: React.FC<CanvasProps> = ({
     const x = (clientX - rect.left - pan.x) / zoom;
     const y = (clientY - rect.top - pan.y) / zoom;
     return { x, y };
+  };
+
+  // Helper to find any port near canvas coordinates (with generous 32px touch radius for mobile fingers)
+  const findPortAtCoords = (
+    canvasX: number,
+    canvasY: number,
+    targetIsOutput?: boolean
+  ): { nodeId: string; portId: string; isOutput: boolean; portX: number; portY: number } | null => {
+    const TOUCH_HIT_RADIUS = 32; // Canvas coordinate hit radius for mobile touch wire connection
+    let closest: { nodeId: string; portId: string; isOutput: boolean; portX: number; portY: number; dist: number } | null = null;
+
+    for (const node of nodes) {
+      const checkPorts = (ports: Port[], isOutput: boolean) => {
+        for (const port of ports) {
+          const px = node.x + (node.width * port.relativeX) / 100;
+          const py = node.y + (node.height * port.relativeY) / 100;
+          const dist = Math.hypot(canvasX - px, canvasY - py);
+          if (dist <= TOUCH_HIT_RADIUS && (!closest || dist < closest.dist)) {
+            closest = { nodeId: node.id, portId: port.id, isOutput, portX: px, portY: py, dist };
+          }
+        }
+      };
+
+      if (targetIsOutput === undefined || targetIsOutput === false) {
+        checkPorts(node.inputs, false);
+      }
+      if (targetIsOutput === undefined || targetIsOutput === true) {
+        checkPorts(node.outputs, true);
+      }
+    }
+
+    return closest;
   };
 
   // Handle clicking or touching a node
@@ -93,6 +135,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Start wire from output port
   const handleStartWire = (nodeId: string, portId: string) => {
+    dragDistanceRef.current = 0;
     const node = nodes.find((n) => n.id === nodeId);
     if (node) {
       const coords = getPortAbsoluteCoords(node, portId, true);
@@ -109,12 +152,13 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Complete wire to input port
   const handleCompleteWire = (toNodeId: string, toPortId: string) => {
-    if (draftWire) {
-      if (draftWire.fromNodeId !== toNodeId) {
-        onAddWire(draftWire.fromNodeId, draftWire.fromPortId, toNodeId, toPortId);
+    if (draftWireRef.current) {
+      if (draftWireRef.current.fromNodeId !== toNodeId) {
+        onAddWire(draftWireRef.current.fromNodeId, draftWireRef.current.fromPortId, toNodeId, toPortId);
         soundFx.playConnectSound();
       }
       setDraftWire(null);
+      setHoveredPort(null);
     }
   };
 
@@ -123,19 +167,31 @@ export const Canvas: React.FC<CanvasProps> = ({
     const handleMove = (clientX: number, clientY: number) => {
       const coords = getCanvasCoords(clientX, clientY);
 
-      // Wire draft updating
-      if (draftWire) {
+      // Wire draft updating (Mobile touch & Desktop mouse)
+      if (draftWireRef.current) {
+        dragDistanceRef.current += 1;
         let targetX = coords.x;
         let targetY = coords.y;
 
-        if (hoveredPort && !hoveredPort.isOutput) {
-          const hNode = nodes.find((n) => n.id === hoveredPort.nodeId);
-          if (hNode) {
-            const portCoords = getPortAbsoluteCoords(hNode, hoveredPort.portId, false);
-            if (portCoords) {
-              targetX = portCoords.x;
-              targetY = portCoords.y;
+        // Search for nearest input port near touch/mouse coords
+        const nearbyInputPort = findPortAtCoords(coords.x, coords.y, false);
+
+        if (nearbyInputPort && nearbyInputPort.nodeId !== draftWireRef.current.fromNodeId) {
+          setHoveredPort({ nodeId: nearbyInputPort.nodeId, portId: nearbyInputPort.portId, isOutput: false });
+          targetX = nearbyInputPort.portX;
+          targetY = nearbyInputPort.portY;
+        } else {
+          if (hoveredPortRef.current && !hoveredPortRef.current.isOutput) {
+            const hNode = nodes.find((n) => n.id === hoveredPortRef.current?.nodeId);
+            if (hNode) {
+              const portCoords = getPortAbsoluteCoords(hNode, hoveredPortRef.current.portId, false);
+              if (portCoords) {
+                targetX = portCoords.x;
+                targetY = portCoords.y;
+              }
             }
+          } else {
+            setHoveredPort(null);
           }
         }
 
@@ -187,17 +243,48 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
     };
 
-    const handleEnd = () => {
+    const handleEnd = (e?: MouseEvent | TouchEvent) => {
       setIsPanning(false);
       setIsDraggingNode(false);
 
-      if (draftWire) {
-        if (hoveredPort && !hoveredPort.isOutput && hoveredPort.nodeId !== draftWire.fromNodeId) {
-          onAddWire(draftWire.fromNodeId, draftWire.fromPortId, hoveredPort.nodeId, hoveredPort.portId);
-          soundFx.playConnectSound();
+      if (draftWireRef.current) {
+        let endClientX = 0;
+        let endClientY = 0;
+        let hasEndCoords = false;
+
+        if (e && 'changedTouches' in e && e.changedTouches.length > 0) {
+          endClientX = e.changedTouches[0].clientX;
+          endClientY = e.changedTouches[0].clientY;
+          hasEndCoords = true;
+        } else if (e && 'clientX' in e) {
+          endClientX = (e as MouseEvent).clientX;
+          endClientY = (e as MouseEvent).clientY;
+          hasEndCoords = true;
         }
-        setDraftWire(null);
+
+        let targetInputPort = hoveredPortRef.current && !hoveredPortRef.current.isOutput ? hoveredPortRef.current : null;
+
+        if (!targetInputPort && hasEndCoords) {
+          const canvasCoords = getCanvasCoords(endClientX, endClientY);
+          const nearby = findPortAtCoords(canvasCoords.x, canvasCoords.y, false);
+          if (nearby && nearby.nodeId !== draftWireRef.current.fromNodeId) {
+            targetInputPort = nearby;
+          }
+        }
+
+        if (targetInputPort && targetInputPort.nodeId !== draftWireRef.current.fromNodeId) {
+          onAddWire(draftWireRef.current.fromNodeId, draftWireRef.current.fromPortId, targetInputPort.nodeId, targetInputPort.portId);
+          soundFx.playConnectSound();
+          setDraftWire(null);
+          setHoveredPort(null);
+        } else if (dragDistanceRef.current > 5) {
+          // If dragged in empty space, cancel draft wire
+          setDraftWire(null);
+          setHoveredPort(null);
+        }
+        // If dragDistance <= 5 (single tap mode), KEEP draft wire active for tap 2!
       }
+      dragDistanceRef.current = 0;
 
       if (boxSelectStart && boxSelectCurrent) {
         const minX = Math.min(boxSelectStart.x, boxSelectCurrent.x);
@@ -252,6 +339,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (target === containerRef.current || (target as HTMLElement).tagName === 'svg') {
       onSelectNode(null, false);
       onSelectWire(null);
+      if (draftWireRef.current) {
+        setDraftWire(null);
+        setHoveredPort(null);
+      }
 
       if (button === 1 || button === 4) {
         setIsPanning(true);
@@ -264,11 +355,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => handleStart(e.clientX, e.clientY, e.target, e.button);
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      handleStart(e.touches[0].clientX, e.touches[0].clientY, e.target, 0);
-    }
+  const handlePointerDown = (e: React.PointerEvent) => {
+    handleStart(e.clientX, e.clientY, e.target, e.button);
   };
 
   // HTML5 Drag and drop from palette
@@ -298,8 +386,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onPointerDown={handlePointerDown}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       style={{

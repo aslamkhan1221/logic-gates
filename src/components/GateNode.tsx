@@ -26,17 +26,13 @@ export const GateNode: React.FC<GateNodeProps> = ({
 }) => {
   const { id, type, label, x, y, width, height, inputs, outputs, state } = node;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    onNodeMouseDown(id, e);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleNodePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     onNodeMouseDown(id, e);
   };
 
   // Toggle switch action
-  const handleToggleSwitch = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleToggleSwitch = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     if (type === 'SWITCH') {
       const newVal = state.value === 1 ? 0 : 1;
@@ -46,7 +42,7 @@ export const GateNode: React.FC<GateNodeProps> = ({
   };
 
   // Push button action
-  const handleButtonDown = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleButtonDown = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     if (type === 'BUTTON') {
       soundFx.playToggleSound(true);
@@ -54,7 +50,7 @@ export const GateNode: React.FC<GateNodeProps> = ({
     }
   };
 
-  const handleButtonUp = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleButtonUp = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     if (type === 'BUTTON') {
       onUpdateNodeState(id, { value: 0 });
@@ -68,9 +64,8 @@ export const GateNode: React.FC<GateNodeProps> = ({
     const isHigh = port.value === 1;
     const isHovered = hoveredPort?.nodeId === id && hoveredPort?.portId === port.id;
 
-    const handlePortTrigger = (e: React.MouseEvent | React.TouchEvent) => {
+    const handlePortTrigger = (e: React.SyntheticEvent) => {
       e.stopPropagation();
-      e.preventDefault();
       if (isOutput) {
         onStartWire(id, port.id);
       } else {
@@ -82,11 +77,8 @@ export const GateNode: React.FC<GateNodeProps> = ({
       <g
         key={port.id}
         transform={`translate(${portX}, ${portY})`}
-        style={{ cursor: 'pointer' }}
-        onMouseDown={handlePortTrigger}
-        onTouchStart={handlePortTrigger}
-        onMouseUp={handlePortTrigger}
-        onTouchEnd={handlePortTrigger}
+        style={{ cursor: 'pointer', touchAction: 'none' }}
+        onPointerDown={handlePortTrigger}
         onMouseEnter={() => onPortHover({ nodeId: id, portId: port.id, isOutput })}
         onMouseLeave={() => onPortHover(null)}
       >
@@ -101,11 +93,11 @@ export const GateNode: React.FC<GateNodeProps> = ({
         />
 
         {/* Large Invisible Hit Target for Easy Touch/Click Radius */}
-        <circle r={14} fill="transparent" />
+        <circle r={18} fill="transparent" />
 
         {/* Hover Highlight Ring */}
         {isHovered && (
-          <circle r={11} fill="rgba(56, 189, 248, 0.2)" stroke={isOutput ? 'var(--accent-cyan)' : 'var(--accent-emerald)'} strokeWidth={2.5} />
+          <circle r={12} fill="rgba(56, 189, 248, 0.25)" stroke={isOutput ? 'var(--accent-cyan)' : 'var(--accent-emerald)'} strokeWidth={2.5} />
         )}
 
         {/* Port Circle Target */}
@@ -191,7 +183,7 @@ export const GateNode: React.FC<GateNodeProps> = ({
       case 'SWITCH': {
         const isOn = state.value === 1;
         return (
-          <g transform="translate(10, 10)" onClick={handleToggleSwitch} onTouchEnd={handleToggleSwitch} style={{ cursor: 'pointer' }}>
+          <g transform="translate(10, 10)" onClick={handleToggleSwitch} style={{ cursor: 'pointer' }}>
             <rect x={0} y={0} width={50} height={50} rx={12} fill={isOn ? 'var(--accent-emerald)' : 'var(--bg-card)'} stroke="var(--border-highlight)" strokeWidth={2} />
             <circle cx={25} cy={isOn ? 18 : 32} r={10} fill="#fff" style={{ transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             <text x={25} y={isOn ? 40 : 18} textAnchor="middle" fill={isOn ? '#fff' : 'var(--text-muted)'} fontSize={11} fontWeight={700}>
@@ -204,7 +196,7 @@ export const GateNode: React.FC<GateNodeProps> = ({
       case 'BUTTON': {
         const isPressed = state.value === 1;
         return (
-          <g transform="translate(10, 10)" onMouseDown={handleButtonDown} onTouchStart={handleButtonDown} onMouseUp={handleButtonUp} onTouchEnd={handleButtonUp} style={{ cursor: 'pointer' }}>
+          <g transform="translate(10, 10)" onPointerDown={handleButtonDown} onPointerUp={handleButtonUp} style={{ cursor: 'pointer' }}>
             <circle cx={25} cy={25} r={22} fill={isPressed ? 'var(--accent-rose)' : 'var(--bg-card)'} stroke="var(--border-highlight)" strokeWidth={2} />
             <circle cx={25} cy={25} r={14} fill={isPressed ? '#fff' : 'var(--accent-rose)'} />
           </g>
@@ -559,8 +551,7 @@ export const GateNode: React.FC<GateNodeProps> = ({
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onPointerDown={handleNodePointerDown}
       style={{ cursor: 'move', touchAction: 'none' }}
     >
       {/* Race-Around Alert Badge Overlay */}
