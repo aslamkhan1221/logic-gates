@@ -1,4 +1,5 @@
 import type { Subject, Unit } from '../types/examNotes';
+import { ANALOG_ELECTRONICS_UNITS } from './analogElectronicsData';
 
 export const SUBJECTS: Subject[] = [
   {
@@ -16,12 +17,12 @@ export const SUBJECTS: Subject[] = [
     id: 'analog-electronics',
     name: 'Analog Electronics',
     code: 'ANE-301',
-    description: 'Master PN junction diodes, rectifiers, filters, BJT biasing & amplifiers, operational amplifiers (Op-Amps), and regulated power supplies.',
+    description: 'Master Power Amplifiers (Class A, B, AB, C, Push-Pull, Heat Sinks) and Op-Amps (IC-741, Parameters, Inverting/Non-Inverting, Mathematical applications, Converters, Comparators & Schmitt Trigger).',
     icon: '⚡',
     color: '#f59e0b',
     gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
     badge: 'Core Hardware ⭐',
-    units: [],
+    units: ANALOG_ELECTRONICS_UNITS,
   },
 ];
 
@@ -1165,7 +1166,7 @@ export const DIGITAL_TECHNIQUE_UNITS: Unit[] = [
   },
 ];
 
-export const ANALOG_ELECTRONICS_UNITS: Unit[] = [];
+export { ANALOG_ELECTRONICS_UNITS };
 
 export const ALL_EXAM_NOTES_UNITS: Unit[] = [
   ...DIGITAL_TECHNIQUE_UNITS,

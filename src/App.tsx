@@ -17,6 +17,7 @@ import { ToastContainer, type ToastMessage } from './components/Toast';
 import { ExamNotesSidebar, type NavTab } from './components/examNotes/ExamNotesSidebar';
 import { ExamNotesHome } from './components/examNotes/ExamNotesHome';
 import { PracticeSection } from './components/examNotes/PracticeSection';
+import { UploadedNotesManager } from './components/examNotes/UploadedNotesManager';
 import type { UserNote } from './types/examNotes';
 
 export const App: React.FC = () => {
@@ -953,7 +954,7 @@ export const App: React.FC = () => {
         />
 
         {/* View Switcher Content Container */}
-        <div className="app-view-container" style={{ flex: 1, display: 'flex', position: 'relative', overflowY: (activeTab === 'exam-notes' || activeTab === 'practice') ? 'auto' : 'hidden' }}>
+        <div className="app-view-container" style={{ flex: 1, display: 'flex', position: 'relative', overflowY: (activeTab === 'exam-notes' || activeTab === 'practice' || activeTab === 'uploaded-notes') ? 'auto' : 'hidden' }}>
           {activeTab === 'exam-notes' && (
             <ExamNotesHome
               completedTopicIds={completedTopicIds}
@@ -963,6 +964,12 @@ export const App: React.FC = () => {
               notes={userNotes}
               onAddNote={handleAddNote}
             />
+          )}
+
+          {activeTab === 'uploaded-notes' && (
+            <div style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '28px 24px' }}>
+              <UploadedNotesManager />
+            </div>
           )}
 
           {activeTab === 'practice' && (

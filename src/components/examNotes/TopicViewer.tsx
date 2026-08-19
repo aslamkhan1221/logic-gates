@@ -4,6 +4,7 @@ import type { Topic, UserNote } from '../../types/examNotes';
 import { InteractiveStepSolver } from './InteractiveStepSolver';
 import { GateSandboxCard } from './GateSandboxCard';
 import { LogicFamiliesChart } from './LogicFamiliesChart';
+import { AnalogCircuitDiagram } from './AnalogCircuitDiagram';
 import { AITutorBot } from './AITutorBot';
 import {
   Volume2, VolumeX, Bookmark, Printer,
@@ -333,6 +334,14 @@ export const TopicViewer: React.FC<Props> = ({
 
       {/* Logic Families Comparison Chart */}
       {topic.logicFamiliesData && <LogicFamiliesChart families={topic.logicFamiliesData} />}
+
+      {/* Analog Circuit Diagram & Visual Schematic */}
+      {topic.analogDiagramType && (
+        <AnalogCircuitDiagram
+          type={topic.analogDiagramType}
+          title={`${topic.title} Circuit Schematic & Diagram`}
+        />
+      )}
 
       {/* REQUIREMENT 4: Memory Tricks */}
       {topic.memoryTricks.length > 0 && (

@@ -9,10 +9,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Radio
+  Radio,
+  FolderUp
 } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'simulator' | 'practice' | 'quiz' | 'exam-notes' | 'previous-papers' | 'settings' | 'iot-simulator';
+export type NavTab = 'dashboard' | 'simulator' | 'practice' | 'quiz' | 'exam-notes' | 'uploaded-notes' | 'previous-papers' | 'settings' | 'iot-simulator';
 
 interface Props {
   activeTab: NavTab;
@@ -34,6 +35,7 @@ export const ExamNotesSidebar: React.FC<Props> = ({
     { id: 'practice', label: 'Practice', icon: <PenTool size={18} /> },
     { id: 'quiz', label: 'Quiz', icon: <HelpCircle size={18} /> },
     { id: 'exam-notes', label: 'Exam Notes', icon: <BookOpen size={18} />, badge: '⭐ NEW' },
+    { id: 'uploaded-notes', label: 'Uploaded Notes', icon: <FolderUp size={18} />, badge: 'NEW' },
     { id: 'previous-papers', label: 'Previous Papers', icon: <FileText size={18} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
   ];

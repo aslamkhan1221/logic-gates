@@ -45,7 +45,21 @@ export interface Topic {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   badge: string;
   conceptSummary: string;
-  conceptAnimationType?: 'bit-flow' | 'conversion' | 'gate-flow' | 'complement' | 'family-chart' | 'boolean-diagram' | 'diode-flow' | 'bjt-flow' | 'opamp-flow';
+  conceptAnimationType?: 'bit-flow' | 'conversion' | 'gate-flow' | 'complement' | 'family-chart' | 'boolean-diagram' | 'diode-flow' | 'bjt-flow' | 'opamp-flow' | 'power-amp';
+  analogDiagramType?:
+    | 'power-amp-class-a'
+    | 'power-amp-push-pull'
+    | 'power-amp-class-c'
+    | 'heat-sink-thermal'
+    | 'opamp-block-pinout'
+    | 'opamp-inverting-noninverting'
+    | 'opamp-adder-subtractor'
+    | 'opamp-integrator-differentiator'
+    | 'sample-and-hold'
+    | 'iv-vi-converters'
+    | 'comparator-zcd'
+    | 'schmitt-trigger'
+    | 'window-peak-detector';
   
   diagramSteps?: {
     label: string;
@@ -143,7 +157,7 @@ export interface Unit {
 }
 
 export interface Subject {
-  id: 'digital-technique' | 'analog-electronics';
+  id: string;
   name: string;
   code: string;
   description: string;
@@ -152,6 +166,7 @@ export interface Subject {
   gradient: string;
   badge: string;
   units: Unit[];
+  isCustom?: boolean;
 }
 
 export interface UserNote {
